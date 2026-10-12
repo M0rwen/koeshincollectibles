@@ -3,3 +3,6 @@ node_modules
 *.env
 *.old
 *.old.txt
+firebase-service-account.json
+*firebase-adminsdk*.json
+*service-account*
