@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 
@@ -8,49 +8,32 @@ import Sidebar from './SideBar'
 import { formatCurrency } from '../../Utils/helpers';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { DataGrid, } from '@mui/x-data-grid'
 import { useDispatch, useSelector } from 'react-redux'
 import {
     getAdminProducts,
     deleteProduct,
     clearErrors,
+    bulkDeleteProducts,
 } from '../../actions/productActions'
-import { DELETE_PRODUCT_RESET } from '../../constants/productConstants'
+import { DELETE_PRODUCT_RESET, BULK_DELETE_PRODUCTS_RESET } from '../../constants/productConstants'
+import Table from 'react-bootstrap/Table'
+import Form from 'react-bootstrap/Form'
 
 const ProductsList = () => {
     const dispatch = useDispatch();
     const { loading, error, products } = useSelector(state => state.products)
-    const { error: deleteError, isDeleted } = useSelector(state => state.product)
+    const { error: deleteError, isDeleted, isBulkDeleted } = useSelector(state => state.product)
+    const [selectedIds, setSelectedIds] = useState([])
+    const [searchTerm, setSearchTerm] = useState('')
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
 
-    // const [products, setProducts] = useState([])
-    // const [error, setError] = useState('')
-    // const [deleteError, setDeleteError] = useState('')
-
-    // const [loading, setLoading] = useState(true)
-    // const [isDeleted, setIsDeleted] = useState(false)
-
-    // const getAdminProducts = async () => {
-    //     try {
-
-    //         const config = {
-    //             headers: {
-
-    //                 'Authorization': `Bearer ${getToken()}`
-    //             }
-    //         }
-
-    //         const { data } = await axios.get(`${import.meta.env.VITE_API}/admin/products`, config)
-    //         console.log(data)
-    //         setProducts(data.products)
-    //         setLoading(false)
-    //     } catch (error) {
-
-    //         setError(error.response.data.message)
-
-    //     }
-    // }
     useEffect(() => {
+        console.log('ProductsList mounting, dispatching getAdminProducts')
         dispatch(getAdminProducts())
+    }, [dispatch])
+
+    useEffect(() => {
+        console.log('State changed:', { loading, error, products, isDeleted, isBulkDeleted })
 
         if (error) {
             toast.error(error, {
@@ -70,90 +53,80 @@ const ProductsList = () => {
             toast.success('Product deleted successfully', {
                 position: 'bottom-right'
             })
-            // navigate('/admin/products');
             dispatch({ type: DELETE_PRODUCT_RESET })
-
         }
 
-    }, [error, deleteError, isDeleted, dispatch])
+        if (isBulkDeleted) {
+            toast.success('Products deleted successfully', {
+                position: 'bottom-right'
+            })
+            setSelectedIds([])
+            dispatch({ type: BULK_DELETE_PRODUCTS_RESET })
+        }
 
-    // const deleteProduct = async (id) => {
-    //     try {
-    //         const config = {
-    //             headers: {
+    }, [error, deleteError, isDeleted, isBulkDeleted, dispatch])
 
-    //                 'Authorization': `Bearer ${getToken()}`
-    //             }
-    //         }
-    //         const { data } = await axios.delete(`${import.meta.env.VITE_API}/admin/product/${id}`, config)
-
-    //         setIsDeleted(data.success)
-    //         setLoading(false)
-    //     } catch (error) {
-    //         setDeleteError(error.response.data.message)
-
-    //     }
-    // }
     const deleteProductHandler = (id) => {
         dispatch(deleteProduct(id))
     }
 
-    const columns = [
-        {
-            field: 'id',
-            headerName: 'Product ID',
-            flex: 1,
-            renderCell: (params) => <span style={{ wordBreak: 'break-all' }}>{params.value}</span>
-        },
-        {
-            field: 'name',
-            headerName: 'Name',
-
-            width: 130,
-            align: 'right',
-            headerAlign: 'right'
-        },
-        {
-            field: 'price',
-            headerName: 'Price',
-            width: 120,
-            align: 'right',
-            headerAlign: 'right'
-        },
-        {
-            field: 'stock',
-            headerName: 'Stock',
-            width: 120,
-            align: 'right',
-            headerAlign: 'right'
-        },
-
-        {
-            field: 'actions',
-            headerName: 'Actions',
-            width: 120,
-            sortable: false,
-            filterable: false,
-            renderCell: (params) => (
-                <>
-                    {console.log(params)}
-                    <Link to={`/admin/product/${params.id}`} className="btn btn-primary py-1 px-2">
-                        <i className="fa fa-pencil"></i>
-                    </Link>
-                    <button className="btn btn-danger py-1 px-2 ml-2" onClick={() => deleteProductHandler(params.id)}>
-                        <i className="fa fa-trash"></i>
-                    </button>
-                </>
-            )
+    const bulkDeleteHandler = () => {
+        if (selectedIds.length === 0) {
+            toast.error('Please select at least one product to delete', {
+                position: 'bottom-right'
+            })
+            return
         }
-    ];
+        if (window.confirm(`Are you sure you want to delete ${selectedIds.length} product(s)?`)) {
+            dispatch(bulkDeleteProducts(selectedIds))
+        }
+    }
 
-    const rows = products.map(product => ({
-        id: product._id,
-        name: product.name,
-        price: formatCurrency(product.price),
-        stock: product.stock,
-    }));
+    const handleSort = (key) => {
+        let direction = 'asc'
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc'
+        }
+        setSortConfig({ key, direction })
+    }
+
+    const filteredProducts = products && Array.isArray(products) 
+        ? products.filter(product => 
+            product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            product._id.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        : []
+
+    const sortedProducts = [...filteredProducts].sort((a, b) => {
+        if (!sortConfig.key) return 0
+        const aValue = a[sortConfig.key]
+        const bValue = b[sortConfig.key]
+        
+        if (typeof aValue === 'string') {
+            return sortConfig.direction === 'asc' 
+                ? aValue.localeCompare(bValue) 
+                : bValue.localeCompare(aValue)
+        }
+        return sortConfig.direction === 'asc' 
+            ? aValue - bValue 
+            : bValue - aValue
+    })
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(sortedProducts.map(p => p._id))
+        } else {
+            setSelectedIds([])
+        }
+    }
+
+    const handleSelectOne = (id) => {
+        setSelectedIds(prev => 
+            prev.includes(id) 
+                ? prev.filter(selectedId => selectedId !== id)
+                : [...prev, id]
+        )
+    }
 
     return (
         <>
@@ -167,19 +140,82 @@ const ProductsList = () => {
                     <>
                         <h1 className="my-5">All Products</h1>
 
-                        {loading ? <Loader /> : (
-                            <div style={{ width: '100%' }}>
-                                <DataGrid
-                                    rows={rows}
-                                    columns={columns}
-
-                                    pageSize={5}
-                                    rowsPerPageOptions={[5, 10, 25]}
-                                    disableSelectionOnClick
-                                    getRowId={(row) => row.id}
-                                    showToolbar
-                                />
-                            </div>
+                        {loading ? <Loader /> : error ? (
+                            <div className="alert alert-danger">{error}</div>
+                        ) : (
+                            <>
+                                <div className="d-flex justify-content-between align-items-center mb-3">
+                                    <Form.Control
+                                        type="text"
+                                        placeholder="Search products..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        style={{ width: '300px' }}
+                                    />
+                                    <button 
+                                        className="btn btn-danger" 
+                                        onClick={bulkDeleteHandler}
+                                        disabled={selectedIds.length === 0}
+                                    >
+                                        Delete Selected ({selectedIds.length})
+                                    </button>
+                                </div>
+                                
+                                <Table striped bordered hover responsive>
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '50px' }}>
+                                                <Form.Check
+                                                    type="checkbox"
+                                                    checked={selectedIds.length === sortedProducts.length && sortedProducts.length > 0}
+                                                    onChange={handleSelectAll}
+                                                />
+                                            </th>
+                                            <th onClick={() => handleSort('_id')} style={{ cursor: 'pointer' }}>
+                                                ID {sortConfig.key === '_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th onClick={() => handleSort('name')} style={{ cursor: 'pointer' }}>
+                                                Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th onClick={() => handleSort('price')} style={{ cursor: 'pointer' }}>
+                                                Price {sortConfig.key === 'price' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th onClick={() => handleSort('stock')} style={{ cursor: 'pointer' }}>
+                                                Stock {sortConfig.key === 'stock' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sortedProducts.map(product => (
+                                            <tr key={product._id}>
+                                                <td>
+                                                    <Form.Check
+                                                        type="checkbox"
+                                                        checked={selectedIds.includes(product._id)}
+                                                        onChange={() => handleSelectOne(product._id)}
+                                                    />
+                                                </td>
+                                                <td style={{ wordBreak: 'break-all', maxWidth: '200px' }}>{product._id}</td>
+                                                <td>{product.name}</td>
+                                                <td>{formatCurrency(product.price)}</td>
+                                                <td>{product.stock}</td>
+                                                <td>
+                                                    <Link to={`/admin/product/${product._id}`} className="btn btn-primary py-1 px-2">
+                                                        <i className="fa fa-pencil"></i>
+                                                    </Link>
+                                                    <button className="btn btn-danger py-1 px-2 ml-2" onClick={() => deleteProductHandler(product._id)}>
+                                                        <i className="fa fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </Table>
+                                {sortedProducts.length === 0 && (
+                                    <div className="alert alert-info">No products found</div>
+                                )}
+                            </>
                         )}
 
                     </>

@@ -354,3 +354,40 @@ exports.productSales = async (req, res, next) => {
     })
 
 }
+
+exports.bulkDeleteProducts = async (req, res, next) => {
+    const { ids } = req.body
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Please provide product IDs to delete'
+        })
+    }
+
+    try {
+        const products = await Product.find({ _id: { $in: ids } })
+
+        if (products.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No products found'
+            })
+        }
+
+        const allImages = products.flatMap(product => product.images || [])
+        await destroyProductImages(allImages)
+
+        await Product.deleteMany({ _id: { $in: ids } })
+
+        return res.status(200).json({
+            success: true,
+            message: `${products.length} products deleted successfully`
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+}

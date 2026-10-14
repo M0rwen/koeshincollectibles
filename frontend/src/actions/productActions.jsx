@@ -22,6 +22,9 @@ import {
     NEW_REVIEW_REQUEST,
     NEW_REVIEW_SUCCESS,
     NEW_REVIEW_FAIL,
+    BULK_DELETE_PRODUCTS_REQUEST,
+    BULK_DELETE_PRODUCTS_SUCCESS,
+    BULK_DELETE_PRODUCTS_FAIL,
 
 
     CLEAR_ERRORS
@@ -192,4 +195,29 @@ export const clearErrors = () => async (dispatch) => {
         type: CLEAR_ERRORS
 
     })
+}
+
+export const bulkDeleteProducts = (ids) => async (dispatch) => {
+    try {
+        dispatch({ type: BULK_DELETE_PRODUCTS_REQUEST })
+        const config = {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            withCredentials: true
+        }
+        const { data } = await axios.delete(`${import.meta.env.VITE_API}/admin/products/bulk`, {
+            ...config,
+            data: { ids }
+        })
+        dispatch({
+            type: BULK_DELETE_PRODUCTS_SUCCESS,
+            payload: data
+        })
+    } catch (error) {
+        dispatch({
+            type: BULK_DELETE_PRODUCTS_FAIL,
+            payload: error.response?.data?.message || error.message
+        })
+    }
 }

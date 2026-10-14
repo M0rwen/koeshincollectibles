@@ -22,6 +22,10 @@ import {
     DELETE_PRODUCT_SUCCESS,
     DELETE_PRODUCT_FAIL,
     DELETE_PRODUCT_RESET,
+    BULK_DELETE_PRODUCTS_REQUEST,
+    BULK_DELETE_PRODUCTS_SUCCESS,
+    BULK_DELETE_PRODUCTS_FAIL,
+    BULK_DELETE_PRODUCTS_RESET,
     CLEAR_ERRORS
 } from '../constants/productConstants'
 
@@ -202,6 +206,27 @@ export const productReducer = (state = {}, action) => {
             return {
                 ...state,
                 isUpdated: false
+            }
+        case BULK_DELETE_PRODUCTS_REQUEST:
+            return {
+                ...state,
+                loading: true
+            }
+        case BULK_DELETE_PRODUCTS_SUCCESS:
+            return {
+                ...state,
+                loading: false,
+                isBulkDeleted: action.payload.success || true
+            }
+        case BULK_DELETE_PRODUCTS_FAIL:
+            return {
+                ...state,
+                error: action.payload
+            }
+        case BULK_DELETE_PRODUCTS_RESET:
+            return {
+                ...state,
+                isBulkDeleted: false
             }
         case CLEAR_ERRORS:
             return {
