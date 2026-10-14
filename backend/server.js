@@ -5,6 +5,10 @@ const cloudinary = require('cloudinary');
 const dotenv = require('dotenv');
 dotenv.config({ path: './config/.env' })
 
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'koeshin_dev_secret_change_me';
+process.env.JWT_EXPIRES_TIME = process.env.JWT_EXPIRES_TIME || '7d';
+process.env.COOKIE_EXPIRES_TIME = process.env.COOKIE_EXPIRES_TIME || '1';
+
 connectDatabase();
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

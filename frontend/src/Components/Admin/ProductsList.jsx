@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 
 import MetaData from '../Layout/MetaData'
 import Loader from '../Layout/Loader'
 import Sidebar from './SideBar'
-import { getToken } from '../../Utils/helpers';
-import axios from 'axios'
+import { formatCurrency } from '../../Utils/helpers';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { DataGrid, } from '@mui/x-data-grid'
@@ -30,7 +29,6 @@ const ProductsList = () => {
     // const [loading, setLoading] = useState(true)
     // const [isDeleted, setIsDeleted] = useState(false)
 
-    let navigate = useNavigate()
     // const getAdminProducts = async () => {
     //     try {
 
@@ -77,7 +75,7 @@ const ProductsList = () => {
 
         }
 
-    }, [error, deleteError, isDeleted,])
+    }, [error, deleteError, isDeleted, dispatch])
 
     // const deleteProduct = async (id) => {
     //     try {
@@ -153,7 +151,7 @@ const ProductsList = () => {
     const rows = products.map(product => ({
         id: product._id,
         name: product.name,
-        price: `$${product.price}`,
+        price: formatCurrency(product.price),
         stock: product.stock,
     }));
 

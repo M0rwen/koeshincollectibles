@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 import MetaData from '../Layout/MetaData'
 import Loader from '../Layout/Loader'
@@ -13,9 +13,9 @@ import { DataGrid, } from '@mui/x-data-grid'
 import { useDispatch, useSelector } from 'react-redux'
 import { allOrders, clearErrors, deleteOrder } from '../../actions/orderActions'
 import { DELETE_ORDER_RESET } from '../../constants/orderConstants'
+import { formatCurrency } from '../../Utils/helpers'
 
 const OrdersList = () => {
-    let navigate = useNavigate();
     const dispatch = useDispatch();
     const { loading, error, orders } = useSelector(state => state.allOrders);
     const { isDeleted } = useSelector(state => state.order)
@@ -73,7 +73,7 @@ const OrdersList = () => {
             dispatch({ type: DELETE_ORDER_RESET })
             // navigate('/admin/orders');
         }
-    }, [error, isDeleted])
+    }, [error, isDeleted, dispatch])
     const deleteOrderHandler = (id) => {
         dispatch(deleteOrder(id))
     }
@@ -131,7 +131,7 @@ const OrdersList = () => {
     const rows = orders.map(order => ({
         id: order._id,
         numofItems: order.orderItems.length,
-        amount: `$${order.totalPrice}`,
+        amount: formatCurrency(order.totalPrice),
         status: order.orderStatus,
     }));
 

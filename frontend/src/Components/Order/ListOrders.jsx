@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
 import Loader from '../Layout/Loader'
-import axios from 'axios'
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 // import { getToken } from '../../Utils/helpers'
 import { useDispatch, useSelector } from 'react-redux'
-import { myOrders, clearErrors } from '../../actions/orderActions'
+import { myOrders } from '../../actions/orderActions'
+import { formatCurrency } from '../../Utils/helpers'
 
 import {
 
@@ -47,7 +47,7 @@ const ListOrders = () => {
                 position: toast.POSITION.BOTTOM_RIGHT
             });
         }
-    }, [error])
+    }, [error, dispatch])
 
     const columns = [
         {
@@ -102,7 +102,7 @@ const ListOrders = () => {
     const rows = orders.map(order => ({
         id: order._id,
         numOfItems: order.orderItems.length,
-        amount: `$${order.totalPrice}`,
+        amount: formatCurrency(order.totalPrice),
         status: order.orderStatus || ''
     }));
 

@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import MetaData from '../Layout/MetaData'
 import Loader from '../Layout/Loader'
-import axios from 'axios'
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useDispatch, useSelector } from 'react-redux'
 
-import { getOrderDetails, clearErrors } from '../../actions/orderActions'
+import { getOrderDetails } from '../../actions/orderActions'
+import { formatCurrency } from '../../Utils/helpers'
+import { downloadOrderReceipt } from '../../Utils/orderReceipt'
 
 // import { getToken } from '../../Utils/helpers'
 
@@ -19,7 +20,7 @@ const OrderDetails = () => {
     const dispatch = useDispatch();
     const { loading, error, order = {} } = useSelector(state => state.orderDetails)
 
-    const { shippingInfo, orderItems, paymentInfo, user, totalPrice, orderStatus } = order
+    const { shippingInfo, orderItems, paymentInfo, paymentMethod, user, totalPrice, orderStatus } = order
     let { id } = useParams();
 
     // const getOrderDetails = async (id) => {
@@ -51,7 +52,7 @@ const OrderDetails = () => {
                 position: toast.POSITION.BOTTOM_RIGHT
             });
         }
-    }, [error, id])
+    }, [error, id, dispatch])
 
     const shippingDetails = shippingInfo && `${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.postalCode}, ${shippingInfo.country}`
 
@@ -67,17 +68,26 @@ const OrderDetails = () => {
                         <div className="col-12 col-lg-8 mt-5 order-details">
 
                             <h1 className="my-5">Order # {order._id}</h1>
+                            {order.orderReference && (
+                                <div className="order-reference-block">
+                                    <p><b>Reference:</b> {order.orderReference}</p>
+                                    <button className="store-button store-button-dark receipt-download" type="button" onClick={() => downloadOrderReceipt(order)}>
+                                        Download PDF receipt
+                                    </button>
+                                </div>
+                            )}
 
                             <h4 className="mb-4">Shipping Info</h4>
                             <p><b>Name:</b> {user && user.name}</p>
                             <p><b>Phone:</b> {shippingInfo && shippingInfo.phoneNo}</p>
                             <p className="mb-4"><b>Address:</b>{shippingDetails}</p>
-                            <p><b>Amount:</b> ${totalPrice}</p>
+                            <p><b>Amount:</b> {formatCurrency(totalPrice)}</p>
 
                             <hr />
 
                             <h4 className="my-4">Payment</h4>
-                            <p className={isPaid ? "greenColor" : "redColor"}><b>{isPaid ? "PAID" : "NOT PAID"}</b></p>
+                            <p><b>Method:</b> {paymentMethod || 'Not recorded'}</p>
+                            <p className={isPaid ? "greenColor" : "redColor"}><b>{isPaid ? "PAID" : paymentInfo?.status === 'pending' ? 'PENDING' : 'NOT PAID'}</b></p>
 
 
                             <h4 className="my-4">Order Status:</h4>
@@ -100,7 +110,7 @@ const OrderDetails = () => {
 
 
                                         <div className="col-4 col-lg-2 mt-4 mt-lg-0">
-                                            <p>${item.price}</p>
+                                            <p>{formatCurrency(item.price)}</p>
                                         </div>
 
                                         <div className="col-4 col-lg-3 mt-4 mt-lg-0">

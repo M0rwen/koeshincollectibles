@@ -27,24 +27,36 @@ import {
 
 export const productsReducer = (state = { products: [] }, action) => {
     switch (action.type) {
-        case ADMIN_PRODUCTS_REQUEST:
         case ALL_PRODUCTS_REQUEST:
-
+            return {
+                ...state,
+                loading: true,
+                loadingMore: (action.payload?.page ?? 1) > 1 && action.payload?.queryKey === state.queryKey,
+                products: (action.payload?.page ?? 1) === 1 || action.payload?.queryKey !== state.queryKey ? [] : state.products,
+                queryKey: action.payload?.queryKey,
+                error: null
+            }
+        case ADMIN_PRODUCTS_REQUEST:
             return {
                 ...state,
                 loading: true,
                 products: []
             }
-        case ALL_PRODUCTS_SUCCESS:
-
+        case ALL_PRODUCTS_SUCCESS: {
+            if (action.meta?.queryKey !== state.queryKey) return state
+            const existingProducts = action.meta?.append ? state.products : []
+            const existingIds = new Set(existingProducts.map(product => String(product._id)))
+            const newProducts = action.payload.products.filter(product => !existingIds.has(String(product._id)))
             return {
                 ...state,
                 loading: false,
-                products: action.payload.products,
+                loadingMore: false,
+                products: [...existingProducts, ...newProducts],
                 productsCount: action.payload.productsCount,
                 resPerPage: action.payload.resPerPage,
                 filteredProductsCount: action.payload.filteredProductsCount
             }
+        }
         case ADMIN_PRODUCTS_SUCCESS:
             return {
                 ...state,
@@ -53,10 +65,18 @@ export const productsReducer = (state = { products: [] }, action) => {
 
             }
         case ALL_PRODUCTS_FAIL:
+            if (action.meta?.queryKey !== state.queryKey) return state
+            return {
+                ...state,
+                loading: false,
+                loadingMore: false,
+                error: action.payload
+            }
         case ADMIN_PRODUCTS_FAIL:
             return {
                 ...state,
                 loading: false,
+                loadingMore: false,
                 error: action.payload
             }
 

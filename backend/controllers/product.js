@@ -1,54 +1,92 @@
 const Product = require('../models/product')
 const Order = require('../models/order')
 const cloudinary = require('cloudinary')
+const fs = require('fs/promises')
+const path = require('path')
+const { randomUUID } = require('crypto')
 const APIFeatures = require('../utils/apiFeatures');
 
-exports.newProduct = async (req, res, next) => {
-    console.log(req.files)
-    let images = []
-    // if (typeof req.files === 'string') {
-    //     images.push(req.files)
-    // } else {
-    //     images = req.files
-    // }
+const productImageDirectory = path.resolve(__dirname, '../../frontend/public/images/products')
+const maxImageBytes = 10 * 1024 * 1024
+const maxTotalImageBytes = 35 * 1024 * 1024
 
-    if (typeof req.body.images === 'string') {
-        images.push(req.body.images)
-    } else {
-        images = req.body.images
-    }
+const getImageInputs = (images) => {
+    if (typeof images === 'string') return [images]
+    if (!Array.isArray(images)) return []
+    return images.filter(image => typeof image === 'string' && image.length > 0)
+}
 
-    let imagesLinks = [];
+const saveProductImages = async (images) => {
+    const savedImages = []
+    let totalBytes = 0
 
-    for (let i = 0; i < images.length; i++) {
-        try {
-            // const result = await cloudinary.v2.uploader.upload(images[i].path, {
-            //     folder: 'products',
-            //     width: 150,
-            //     crop: "scale",
-            // });
+    try {
+        for (const image of images) {
+            const match = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(image)
+            if (!match) throw new Error('Images must be valid JPEG, PNG, or WebP data URLs')
 
-            const result = await cloudinary.v2.uploader.upload(images[i], {
-                folder: 'products',
-                width: 150,
-                crop: "scale",
-            });
+            const buffer = Buffer.from(match[2], 'base64')
+            if (buffer.length === 0 || buffer.length > maxImageBytes) {
+                throw new Error('Each product image must be smaller than 10 MB')
+            }
 
-            imagesLinks.push({
-                public_id: result.public_id,
-                url: result.secure_url
+            totalBytes += buffer.length
+            if (totalBytes > maxTotalImageBytes) {
+                throw new Error('Combined product images must be smaller than 35 MB')
+            }
+
+            const extension = match[1].toLowerCase() === 'jpeg' ? 'jpg' : match[1].toLowerCase()
+            const filename = `${randomUUID()}.${extension}`
+            await fs.mkdir(productImageDirectory, { recursive: true })
+            await fs.writeFile(path.join(productImageDirectory, filename), buffer, { flag: 'wx' })
+            savedImages.push({
+                public_id: `repo:${filename}`,
+                url: `/images/products/${filename}`
             })
-
-        } catch (error) {
-            console.log(error)
         }
-
+    } catch (error) {
+        await destroyProductImages(savedImages)
+        throw error
     }
 
-    req.body.images = imagesLinks
-    req.body.user = req.user.id;
+    return savedImages
+}
 
-    const product = await Product.create(req.body);
+const destroyProductImages = async (images = []) => {
+    await Promise.allSettled(images.map(async image => {
+        if (image.public_id?.startsWith('repo:')) {
+            const filename = image.public_id.slice('repo:'.length)
+            if (path.basename(filename) === filename) {
+                await fs.unlink(path.join(productImageDirectory, filename)).catch(error => {
+                    if (error.code !== 'ENOENT') throw error
+                })
+            }
+        } else if (image.public_id?.startsWith('products/')) {
+            await cloudinary.v2.uploader.destroy(image.public_id)
+        }
+    }))
+}
+
+exports.newProduct = async (req, res, next) => {
+    const imageInputs = getImageInputs(req.body.images)
+    if (imageInputs.length === 0 || imageInputs.length > 10) {
+        return res.status(400).json({ message: 'Please provide between 1 and 10 product images' })
+    }
+
+    let images
+    try {
+        images = await saveProductImages(imageInputs)
+    } catch (error) {
+        return res.status(400).json({ message: `Product image upload failed: ${error.message}` })
+    }
+
+    let product
+    try {
+        product = await Product.create({ ...req.body, images, user: req.user.id })
+    } catch (error) {
+        await destroyProductImages(images)
+        return res.status(400).json({ message: error.message })
+    }
 
     if (!product)
         return res.status(400).json({
@@ -65,15 +103,15 @@ exports.newProduct = async (req, res, next) => {
 
 exports.getProducts = async (req, res) => {
 
-    const resPerPage = 2;
+    const resPerPage = 4;
     const productsCount = await Product.countDocuments();
 
     // const products = await Product.find()
     const apiFeatures = new APIFeatures(Product.find(), req.query).search().filter()
+    const filteredProductsCount = await Product.countDocuments(apiFeatures.query.getFilter());
 
     apiFeatures.pagination(resPerPage);
     const products = await apiFeatures.query;
-    let filteredProductsCount = products.length;
 
     if (!products)
         return res.status(400).json({ message: 'error loading products' })
@@ -127,62 +165,61 @@ exports.getAdminProducts = async (req, res, next) => {
 
 }
 exports.updateProduct = async (req, res, next) => {
-    let product = await Product.findById(req.params.id);
-    // console.log(req.body)
+    const product = await Product.findById(req.params.id);
     if (!product) {
         return res.status(404).json({
             success: false,
             message: 'Product not found'
         })
     }
-    let images = []
-
-    // if (typeof req.files === 'string') {
-    //     images.push(req.files)
-    // } else {
-    //     images = req.files
-    // }
-    if (typeof req.body.images === 'string') {
-        images.push(req.body.images)
-    } else {
-        images = req.body.images
+    const imageInputs = getImageInputs(req.body.images)
+    if (imageInputs.length > 10) {
+        return res.status(400).json({ message: 'A product can have at most 10 images' })
     }
-    console.log(images)
 
-    let imagesLinks = [];
-    for (let i = 0; i < images.length; i++) {
-        const result = await cloudinary.v2.uploader.upload(images[i], {
-            folder: 'products',
-            width: 150,
-            crop: "scale",
-        });
-        imagesLinks.push({
-            public_id: result.public_id,
-            url: result.secure_url
+    const updateFields = { ...req.body }
+    delete updateFields.images
+    if (imageInputs.length > 0) {
+        try {
+            updateFields.images = await saveProductImages(imageInputs)
+        } catch (error) {
+            return res.status(400).json({ message: `Product image upload failed: ${error.message}` })
+        }
+    }
+
+    let updatedProduct
+    try {
+        updatedProduct = await Product.findByIdAndUpdate(req.params.id, updateFields, {
+            new: true,
+            runValidators: true,
+            useFindandModify: false
         })
-
+    } catch (error) {
+        if (updateFields.images) await destroyProductImages(updateFields.images)
+        return res.status(400).json({ message: error.message })
     }
-    req.body.images = imagesLinks
-    product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-        new: true,
-        runValidators: true,
-        useFindandModify: false
-    })
-    // console.log(product)
+
+    if (imageInputs.length > 0) {
+        await destroyProductImages(product.images)
+    }
+
     return res.status(200).json({
         success: true,
-        product
+        product: updatedProduct
     })
 }
 
 exports.deleteProduct = async (req, res, next) => {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) {
         return res.status(404).json({
             success: false,
             message: 'Product not found'
         })
     }
+
+    await product.deleteOne()
+    await destroyProductImages(product.images)
 
     return res.status(200).json({
         success: true,

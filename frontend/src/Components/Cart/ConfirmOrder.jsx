@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
 import CheckoutSteps from './CheckoutSteps'
-import { getUser } from '../../Utils/helpers'
+import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
 import { useSelector } from 'react-redux'
 const ConfirmOrder = () => {
     // const [user, setUser] = useState(getUser() ? getUser() : {})
@@ -10,10 +9,7 @@ const ConfirmOrder = () => {
     const { cartItems, shippingInfo } = useSelector(state => state.cart)
     const { user } = useSelector(state => state.auth)
     // Calculate Order Prices
-    const itemsPrice = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
-    const shippingPrice = itemsPrice > 200 ? 0 : 25
-    const taxPrice = Number((0.05 * itemsPrice).toFixed(2))
-    const totalPrice = (itemsPrice + shippingPrice + taxPrice).toFixed(2)
+    const { itemsPrice, shippingPrice, taxPrice, totalPrice } = calculateOrderTotals(cartItems)
 
     const processToPayment = () => {
         const data = {
@@ -42,10 +38,9 @@ const ConfirmOrder = () => {
                     <h4 className="mt-4">Your Cart Items:</h4>
 
                     {cartItems.map(item => (
-                        <>
+                        <div className="cart-item my-1" key={item.product}>
                             <hr />
-                            <div className="cart-item my-1" key={item.product}>
-                                <div className="row">
+                            <div className="row">
                                     <div className="col-4 col-lg-2">
                                         <img src={item.image} alt="Laptop" height="45" width="65" />
                                     </div>
@@ -56,13 +51,12 @@ const ConfirmOrder = () => {
 
 
                                     <div className="col-4 col-lg-4 mt-4 mt-lg-0">
-                                        <p>{item.quantity} x ${item.price} = <b>${(item.quantity * item.price).toFixed(2)}</b></p>
+                                        <p>{item.quantity} x {formatCurrency(item.price)} = <b>{formatCurrency(item.quantity * item.price)}</b></p>
                                     </div>
 
-                                </div>
                             </div>
                             <hr />
-                        </>
+                        </div>
                     ))}
 
                 </div>
@@ -71,13 +65,13 @@ const ConfirmOrder = () => {
                     <div id="order_summary">
                         <h4>Order Summary</h4>
                         <hr />
-                        <p>Subtotal:  <span className="order-summary-values">${itemsPrice}</span></p>
-                        <p>Shipping: <span className="order-summary-values">${shippingPrice}</span></p>
-                        <p>Tax:  <span className="order-summary-values">${taxPrice}</span></p>
+                        <p>Subtotal: <span className="order-summary-values">{formatCurrency(itemsPrice)}</span></p>
+                        <p>Shipping: <span className="order-summary-values">{shippingPrice === 0 ? 'FREE' : formatCurrency(shippingPrice)}</span></p>
+                        <p>Tax: <span className="order-summary-values">{formatCurrency(taxPrice)}</span></p>
 
                         <hr />
 
-                        <p>Total: <span className="order-summary-values">${totalPrice}</span></p>
+                        <p>Total: <span className="order-summary-values">{formatCurrency(totalPrice)}</span></p>
 
                         <hr />
                         <button id="checkout_btn" className="btn btn-primary btn-block" onClick={processToPayment}>Proceed to Payment</button>

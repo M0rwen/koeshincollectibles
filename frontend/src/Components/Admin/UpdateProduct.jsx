@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import MetaData from '../Layout/MetaData'
 import Sidebar from './SideBar'
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css'
-import axios from 'axios';
-// import { getToken } from '../../Utils/helpers';
 import { useDispatch, useSelector } from 'react-redux'
 import { updateProduct, getProductDetails, clearErrors } from '../../actions/productActions'
 import { UPDATE_PRODUCT_RESET } from '../../constants/productConstants'
+import { PRODUCT_CATEGORIES } from '../../constants/productCategories'
 
 
 const UpdateProduct = () => {
@@ -33,20 +32,6 @@ const UpdateProduct = () => {
     // const [updateError, setUpdateError] = useState('')
     // const [isUpdated, setIsUpdated] = useState(false)
 
-    const categories = [
-        'Electronics',
-        'Cameras',
-        'Laptops',
-        'Accessories',
-        'Headphones',
-        'Food',
-        "Books",
-        'Clothes/Shoes',
-        'Beauty/Health',
-        'Sports',
-        'Outdoor',
-        'Home'
-    ]
     let { id } = useParams();
     let navigate = useNavigate();
 
@@ -114,24 +99,39 @@ const UpdateProduct = () => {
             dispatch({ type: UPDATE_PRODUCT_RESET })
 
         }
-    }, [error, updateError, product, id, isUpdated])
+    }, [error, updateError, product, id, isUpdated, dispatch, navigate])
 
     const submitHandler = (e) => {
         e.preventDefault();
-        const formData = new FormData();
-        formData.set('name', name);
-        formData.set('price', price);
-        formData.set('description', description);
-        formData.set('category', category);
-        formData.set('stock', stock);
-        formData.set('seller', seller);
-        images.forEach(image => {
-            formData.append('images', image)
-        })
-        dispatch(updateProduct(product._id, formData))
+        dispatch(updateProduct(product._id, {
+            name,
+            price: Number(price),
+            description,
+            category,
+            stock: Number(stock),
+            seller,
+            images
+        }))
     }
     const onChange = e => {
-        const files = Array.from(e.target.files)
+        const files = Array.from(e.target.files || [])
+        if (files.length > 10) {
+            toast.error('Choose up to 10 product images.', { position: 'bottom-right' })
+            e.target.value = ''
+            return
+        }
+        const totalSize = files.reduce((total, file) => total + file.size, 0)
+        if (files.some(file => file.size > 10 * 1024 * 1024) || totalSize > 35 * 1024 * 1024) {
+            toast.error('Each image must be under 10 MB and all images together under 35 MB.', { position: 'bottom-right' })
+            e.target.value = ''
+            return
+        }
+        if (files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type))) {
+            toast.error('Images must be JPEG, PNG, or WebP.', { position: 'bottom-right' })
+            e.target.value = ''
+            return
+        }
+
         setImagesPreview([]);
         setImages([])
         setOldImages([])
@@ -156,7 +156,7 @@ const UpdateProduct = () => {
                 <div className="col-12 col-md-10">
                     <>
                         <div className="wrapper my-5">
-                            <form className="shadow-lg" onSubmit={submitHandler} encType='multipart/form-data'>
+                            <form className="shadow-lg" onSubmit={submitHandler}>
                                 <h1 className="mb-4">Update Product</h1>
                                 <div className="form-group">
                                     <label htmlFor="name_field">Name</label>
@@ -164,28 +164,33 @@ const UpdateProduct = () => {
                                         type="text"
                                         id="name_field"
                                         className="form-control"
+                                        required
+                                        minLength={2}
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label htmlFor="price_field">Price</label>
+                                    <label htmlFor="price_field">Price (PHP)</label>
                                     <input
-                                        type="text"
+                                        type="number"
                                         id="price_field"
                                         className="form-control"
+                                        min="0"
+                                        step="0.01"
+                                        required
                                         value={price}
                                         onChange={(e) => setPrice(e.target.value)}
                                     />
                                 </div>
                                 <div className="form-group">
                                     <label htmlFor="description_field">Description</label>
-                                    <textarea className="form-control" id="description_field" rows="8" value={description} onChange={(e) => setDescription(e.target.value)}></textarea>
+                                    <textarea className="form-control" id="description_field" rows="8" minLength={10} value={description} onChange={(e) => setDescription(e.target.value)} required></textarea>
                                 </div>
                                 <div className="form-group">
                                     <label htmlFor="category_field">Category</label>
-                                    <select className="form-control" id="category_field" value={category} onChange={(e) => setCategory(e.target.value)}>
-                                        {categories.map(category => (
+                                    <select className="form-control" id="category_field" value={category} onChange={(e) => setCategory(e.target.value)} required>
+                                        {PRODUCT_CATEGORIES.map(category => (
                                             <option key={category} value={category} >{category}</option>
                                         ))}
                                     </select>
@@ -196,6 +201,9 @@ const UpdateProduct = () => {
                                         type="number"
                                         id="stock_field"
                                         className="form-control"
+                                        min="0"
+                                        step="1"
+                                        required
                                         value={stock}
                                         onChange={(e) => setStock(e.target.value)}
                                     />
@@ -206,6 +214,7 @@ const UpdateProduct = () => {
                                         type="text"
                                         id="seller_field"
                                         className="form-control"
+                                        required
                                         value={seller}
                                         onChange={(e) => setSeller(e.target.value)}
                                     />
@@ -218,11 +227,12 @@ const UpdateProduct = () => {
                                             name='images'
                                             className='custom-file-input'
                                             id='customFile'
+                                            accept='image/jpeg,image/png,image/webp'
                                             onChange={onChange}
                                             multiple
                                         />
                                         <label className='custom-file-label' htmlFor='customFile'>
-                                            Choose Images
+                                            Replace with up to 10 images
                                         </label>
                                     </div>
                                     {oldImages && oldImages.map(img => (

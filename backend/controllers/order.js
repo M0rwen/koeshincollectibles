@@ -12,11 +12,12 @@ exports.newOrder = async (req, res, next) => {
         taxPrice,
         shippingPrice,
         totalPrice,
-        paymentInfo
+        paymentInfo,
+        paymentMethod
 
     } = req.body;
 
-    const order = await Order.create({
+    const order = new Order({
         orderItems,
         shippingInfo,
         itemsPrice,
@@ -24,9 +25,12 @@ exports.newOrder = async (req, res, next) => {
         shippingPrice,
         totalPrice,
         paymentInfo,
-        paidAt: Date.now(),
+        paymentMethod,
+        paidAt: paymentInfo?.status === 'succeeded' ? Date.now() : undefined,
         user: req.user._id
     })
+    order.orderReference = `KC-${order._id.toString().toUpperCase()}`
+    await order.save()
 
     res.status(200).json({
         success: true,
@@ -90,9 +94,17 @@ exports.deleteOrder = async (req, res, next) => {
 }
 
 exports.updateOrder = async (req, res, next) => {
-    console.log("req", req.params)
     const order = await Order.findById(req.params.id)
-    console.log("order", order)
+    if (!order) {
+        return res.status(404).json({ message: 'Order not found' })
+    }
+
+    const allowedStatuses = ['Processing', 'Shipped', 'Delivered']
+    const nextStatus = req.body.status
+    if (!allowedStatuses.includes(nextStatus)) {
+        return res.status(400).json({ message: 'Please select a valid order status' })
+    }
+
     if (order.orderStatus === 'Delivered') {
         return res.status(400).json({
             message: 'You have already delivered this order',
@@ -100,12 +112,12 @@ exports.updateOrder = async (req, res, next) => {
         })
     }
 
-    order.orderItems.forEach(async item => {
-        await updateStock(item.product, item.quantity)
-    })
+    if (nextStatus === 'Delivered') {
+        await Promise.all(order.orderItems.map(item => updateStock(item.product, item.quantity)))
+        order.deliveredAt = Date.now()
+    }
 
-    order.orderStatus = req.body.status
-    order.deliveredAt = Date.now()
+    order.orderStatus = nextStatus
     await order.save()
     res.status(200).json({
         success: true,

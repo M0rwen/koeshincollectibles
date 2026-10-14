@@ -1,11 +1,9 @@
-import { useState } from 'react'
+import { useEffect } from 'react'
 import './App.css'
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { ToastContainer, } from 'react-toastify';
-import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import axios from 'axios';
 
 
 
@@ -37,6 +35,18 @@ import UpdateUser from './Components/Admin/UpdateUser';
 import ProtectedRoute from './Components/Route/ProtectedRoute';
 import ProductReviews from './Components/Admin/ProductReviews';
 import UpdateProduct from './Components/Admin/UpdateProduct';
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [pathname])
+
+  return null
+}
+
 function App() {
 
   // const [state, setState] = useState({
@@ -115,6 +125,7 @@ function App() {
 
 
       <Router>
+        <ScrollToTop />
         {/* <Header cartItems={state.cartItems} /> */}
         <Header />
         <Routes>
@@ -208,9 +219,9 @@ function App() {
                 <ProductReviews />
               </ProtectedRoute>} />
         </Routes>
+        <Footer />
       </Router>
 
-      <Footer />
       <ToastContainer />
     </>
   )

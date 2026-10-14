@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from "react-router-dom";
 import { countries } from 'countries-list'
 import MetaData from '../Layout/MetaData'
@@ -10,11 +10,11 @@ const Shipping = () => {
     const dispatch = useDispatch();
     const { shippingInfo } = useSelector(state => state.cart)
     const countriesList = Object.values(countries)
-    const [address, setAddress] = useState(shippingInfo.address)
-    const [city, setCity] = useState(shippingInfo.city)
-    const [postalCode, setPostalCode] = useState(shippingInfo.postalCode)
-    const [phoneNo, setPhoneNo] = useState(shippingInfo.phoneNo)
-    const [country, setCountry] = useState(shippingInfo.country)
+    const [address, setAddress] = useState(shippingInfo.address || '')
+    const [city, setCity] = useState(shippingInfo.city || '')
+    const [postalCode, setPostalCode] = useState(shippingInfo.postalCode || '')
+    const [phoneNo, setPhoneNo] = useState(shippingInfo.phoneNo || '')
+    const [country, setCountry] = useState(shippingInfo.country || '')
     let navigate = useNavigate();
     const submitHandler = (e) => {
         e.preventDefault()
@@ -40,6 +40,8 @@ const Shipping = () => {
                                 type="text"
                                 id="address_field"
                                 className="form-control"
+                                autoComplete="street-address"
+                                minLength={5}
                                 value={address}
                                 onChange={(e) => setAddress(e.target.value)}
                                 required
@@ -52,6 +54,8 @@ const Shipping = () => {
                                 type="text"
                                 id="city_field"
                                 className="form-control"
+                                autoComplete="address-level2"
+                                minLength={2}
                                 value={city}
                                 onChange={(e) => setCity(e.target.value)}
                                 required
@@ -61,9 +65,11 @@ const Shipping = () => {
                         <div className="form-group">
                             <label htmlFor="phone_field">Phone No</label>
                             <input
-                                type="phone"
+                                type="tel"
                                 id="phone_field"
                                 className="form-control"
+                                autoComplete="tel"
+                                pattern="[0-9+() -]{7,20}"
                                 value={phoneNo}
                                 onChange={(e) => setPhoneNo(e.target.value)}
                                 required
@@ -73,9 +79,12 @@ const Shipping = () => {
                         <div className="form-group">
                             <label htmlFor="postal_code_field">Postal Code</label>
                             <input
-                                type="number"
+                                type="text"
                                 id="postal_code_field"
                                 className="form-control"
+                                autoComplete="postal-code"
+                                inputMode="numeric"
+                                pattern="[A-Za-z0-9 -]{3,12}"
                                 value={postalCode}
                                 onChange={(e) => setPostalCode(e.target.value)}
                                 required
@@ -91,7 +100,7 @@ const Shipping = () => {
                                 onChange={(e) => setCountry(e.target.value)}
                                 required
                             >
-
+                                <option value="">Select country</option>
                                 {countriesList.map(country => (
                                     <option key={country.name} value={country.name}>
                                         {country.name}

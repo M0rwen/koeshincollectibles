@@ -1,33 +1,32 @@
-import React from 'react'
 import { Link } from 'react-router-dom';
+import { formatCurrency } from '../../Utils/helpers'
 
 const Product = ({ product }) => {
-    console.log(product)
+    const image = product.images?.[0]
     return (
-
-        // <ProductDetails item={item} />
-        <div className="col-sm-12 col-md-6 col-lg-3 my-3">
-            <div className="card p-3 rounded">
-                <img
-                    className="card-img-top mx-auto"
-                    src={product.images[0] ? product.images[0].url : null}
-                />
-                <div className="card-body d-flex flex-column">
-                    <h5 className="card-title">
-                        {/* <a href="{`/product/${product._id}`}">{product.name}</a> */}
-                        <Link to={`/product/${product._id}`} >{product.name}</Link>
-                    </h5>
-                    <div className="ratings mt-auto">
-                        <div className="rating-outer">
-                            <div className="rating-inner" style={{ width: `${(product.ratings / 5) * 100}%` }}></div>
-                        </div>
-                        <span id="no_of_reviews">({product.numOfReviews} reviews)</span>
-                    </div>
-                    <p className="card-text">${product.price}</p>
-                    <Link to={`/product/${product._id}`} id="view_btn" className="btn btn-block">View Details</Link>
+        <article className="collectible-card">
+            <Link className="collectible-image" to={`/product/${product._id}`} aria-label={`View ${product.name}`}>
+                <span className="collectible-category">{product.category}</span>
+                <img src={image?.url || '/images/shopit_logo.png'} alt={product.name} loading="lazy" />
+            </Link>
+            <div className="collectible-info">
+                <div className="collectible-rating" aria-label={`${product.ratings || 0} out of 5 stars`}>
+                    <span className="rating-stars" aria-hidden="true">
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <i className={`fa fa-star${index < Math.round(product.ratings || 0) ? '' : '-o'}`} key={index} />
+                        ))}
+                    </span>
+                    <span>{product.numOfReviews || 0} reviews</span>
+                </div>
+                <h3><Link to={`/product/${product._id}`}>{product.name}</Link></h3>
+                <div className="collectible-buy-row">
+                    <span className="collectible-price">{formatCurrency(product.price)}</span>
+                    <Link className="collectible-open" to={`/product/${product._id}`} aria-label={`See details for ${product.name}`}>
+                        <i className="fa fa-arrow-right" aria-hidden="true" />
+                    </Link>
                 </div>
             </div>
-        </div>
+        </article>
     )
 }
 

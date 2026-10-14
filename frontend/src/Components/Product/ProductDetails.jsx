@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
 import { Carousel } from 'react-bootstrap'
@@ -6,14 +6,14 @@ import { Carousel } from 'react-bootstrap'
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios'
 
-import { getUser, getToken, successMsg, errMsg } from '../../Utils/helpers'
+import { formatCurrency, getToken } from '../../Utils/helpers'
 import ListReviews from '../Review/ListReviews';
 import { useDispatch, useSelector } from 'react-redux'
-import { getProductDetails, clearErrors, } from '../../actions/productActions'
+import { getProductDetails } from '../../actions/productActions'
 import { addItemToCart } from '../../actions/cartActions'
 const ProductDetails = () => {
 
-    const { loading, error, product } = useSelector(state => state.productDetails);
+    const { product } = useSelector(state => state.productDetails);
     // const [product, setProduct] = useState({})
     const { user } = useSelector(state => state.auth)
     const [quantity, setQuantity] = useState(1)
@@ -27,17 +27,11 @@ const ProductDetails = () => {
     const dispatch = useDispatch()
 
     const increaseQty = () => {
-        const count = document.querySelector('.count')
-        if (count.valueAsNumber >= product.stock) return;
-        const qty = count.valueAsNumber + 1;
-        setQuantity(qty)
+        setQuantity(current => Math.min(current + 1, product.stock))
     }
 
     const decreaseQty = () => {
-        const count = document.querySelector('.count')
-        if (count.valueAsNumber <= 1) return;
-        const qty = count.valueAsNumber - 1;
-        setQuantity(qty)
+        setQuantity(current => Math.max(current - 1, 1))
     }
 
     const addToCart = async () => {
@@ -121,7 +115,7 @@ const ProductDetails = () => {
     useEffect(() => {
         dispatch(getProductDetails(id))
 
-    }, [id,]);
+    }, [id, dispatch]);
 
     // useEffect(() => {
     //     localStorage.setItem('cartItems', JSON.stringify(cartItems));
@@ -130,20 +124,22 @@ const ProductDetails = () => {
     return (
         <>
             <MetaData title={product.name} />
-            <div className="row d-flex justify-content-around">
-                <div className="col-12 col-lg-5 img-fluid" id="product_image">
+            <main className="product-details-page">
+            <div className="product-detail-layout">
+                <div className="product-detail-media" id="product_image">
                     <Carousel pause='hover'>
                         {product.images && product.images.map(image => (
                             <Carousel.Item key={image.public_id}>
-                                <img className="d-block w-100" src={image.url} alt={product.title} />
+                                <img className="d-block w-100" src={image.url} alt={product.name} />
                             </Carousel.Item>
                         ))}
                     </Carousel>
                 </div>
 
-                <div className="col-12 col-lg-5 mt-5">
-                    <h3>{product.name}</h3>
-                    <p id="product_id">Product # {product._id}</p>
+                <div className="product-detail-info">
+                    <p className="product-detail-category">{product.category}</p>
+                    <h1 className="product-detail-title">{product.name}</h1>
+                    <p id="product_id">Item {product._id}</p>
 
                     <hr />
 
@@ -154,23 +150,15 @@ const ProductDetails = () => {
 
                     <hr />
 
-                    <p id="product_price">${product.price}</p>
-                    <div className="stockCounter d-inline">
-                        {/* <span className="btn btn-danger minus" >-</span>
-
-                        {/* <input type="number" className="form-control count d-inline" readOnly /> */}
-                        {/* <input type="number" className="form-control count d-inline" value={quantity} readOnly /> */}
-
-                        {/* <span className="btn btn-primary plus" >+</span> */}
-                        <span className="btn btn-danger minus" onClick={decreaseQty}>-</span>
-
-                        <input type="number" className="form-control count d-inline" value={quantity} readOnly />
-
-                        <span className="btn btn-primary plus" onClick={increaseQty}>+</span>
+                    <p id="product_price">{formatCurrency(product.price)}</p>
+                    <div className="product-purchase-row">
+                        <div className="stockCounter">
+                            <button className="quantity-step" type="button" onClick={decreaseQty} aria-label="Decrease quantity">-</button>
+                            <input type="number" className="count" value={quantity} readOnly aria-label="Quantity" />
+                            <button className="quantity-step" type="button" onClick={increaseQty} aria-label="Increase quantity">+</button>
+                        </div>
+                        <button type="button" id="cart_btn" className="btn btn-primary" disabled={product.stock === 0} onClick={addToCart}>Add to Cart</button>
                     </div>
-
-
-                    <button type="button" id="cart_btn" className="btn btn-primary d-inline ml-4" disabled={product.stock === 0} onClick={addToCart}>Add to Cart</button>
                     <hr />
 
                     <p>Status: <span id="stock_status" className={product.stock > 0 ? 'greenColor' : 'redColor'} >{product.stock > 0 ? 'In Stock' : 'Out of Stock'}</span></p>
@@ -189,6 +177,7 @@ const ProductDetails = () => {
                         Submit Your Review
                     </button> :
                         <div className="alert alert-danger mt-5" type='alert'>Login to post your review.</div>}
+                    {(errorReview || success) && <p className="review-feedback" role="status">{errorReview || 'Review submitted.'}</p>}
 
                     {/* <div className="row mt-2 mb-5">
                         <div className="rating w-50">
@@ -230,8 +219,8 @@ const ProductDetails = () => {
 
                         </div>
                     </div> */}
-                    <div className="row mt-2 mb-5">
-                        <div className="rating w-50">
+                    <div className="product-review-area">
+                        <div>
 
                             <div className="modal fade" id="ratingModal" tabIndex="-1" role="dialog" aria-labelledby="ratingModalLabel" aria-hidden="true">
                                 <div className="modal-dialog" role="document">
@@ -278,6 +267,7 @@ const ProductDetails = () => {
                 )}
 
             </div>
+            </main>
 
 
         </>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate, } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
 import Loader from '../Layout/Loader'
@@ -11,12 +11,13 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useDispatch, useSelector } from 'react-redux'
 import { getOrderDetails, updateOrder, clearErrors } from '../../actions/orderActions'
 import { UPDATE_ORDER_RESET } from '../../constants/orderConstants'
+import { formatCurrency } from '../../Utils/helpers'
 const ProcessOrder = () => {
     const dispatch = useDispatch();
     const { loading, order = {} } = useSelector(state => state.orderDetails)
 
     const { error, isUpdated } = useSelector(state => state.order)
-    const { shippingInfo, orderItems, paymentInfo, user, totalPrice, orderStatus } = order
+    const { shippingInfo, orderItems, paymentInfo, paymentMethod, user, totalPrice, orderStatus } = order
 
     const [status, setStatus] = useState('')
     // const [loading, setLoading] = useState(true)
@@ -84,12 +85,10 @@ const ProcessOrder = () => {
             // setIsUpdated('')
             navigate('/admin/orders')
         }
-    }, [error, isUpdated, orderId])
+    }, [error, isUpdated, orderId, dispatch, navigate])
 
     const updateOrderHandler = (id) => {
-        const formData = new FormData();
-        formData.set('status', status);
-        dispatch(updateOrder(id, formData))
+        dispatch(updateOrder(id, { status: status || order.orderStatus || 'Processing' }))
     }
 
     const shippingDetails = shippingInfo && `${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.postalCode}, ${shippingInfo.country}`
@@ -111,12 +110,11 @@ const ProcessOrder = () => {
                                     <p><b>Name:</b> {user && user.name}</p>
                                     <p><b>Phone:</b> {shippingInfo && shippingInfo.phoneNo}</p>
                                     <p className="mb-4"><b>Address:</b>{shippingDetails}</p>
-                                    <p><b>Amount:</b> ${totalPrice}</p>
+                                    <p><b>Amount:</b> {formatCurrency(totalPrice)}</p>
                                     <hr />
                                     <h4 className="my-4">Payment</h4>
+                                    <p><b>Method:</b> {paymentMethod || 'Not recorded'}</p>
                                     <p className={isPaid ? "greenColor" : "redColor"}><b>{isPaid ? "PAID" : "NOT PAID"}</b></p>
-                                    <h4 className="my-4">Stripe ID</h4>
-                                    <p><b>{paymentInfo && paymentInfo.id}</b></p>
 
                                     <h4 className="my-4">Order Status:</h4>
                                     <p className={order.orderStatus && String(order.orderStatus).includes('Delivered') ? "greenColor" : "redColor"} ><b>{orderStatus}</b></p>
@@ -133,7 +131,7 @@ const ProcessOrder = () => {
                                                     <Link to={`/products/${item.product}`}>{item.name}</Link>
                                                 </div>
                                                 <div className="col-4 col-lg-2 mt-4 mt-lg-0">
-                                                    <p>${item.price}</p>
+                                                    <p>{formatCurrency(item.price)}</p>
                                                 </div>
                                                 <div className="col-4 col-lg-3 mt-4 mt-lg-0">
                                                     <p>{item.quantity} Piece(s)</p>
@@ -149,7 +147,7 @@ const ProcessOrder = () => {
                                         <select
                                             className="form-control"
                                             name='status'
-                                            value={status}
+                                            value={status || order.orderStatus || 'Processing'}
                                             onChange={(e) => setStatus(e.target.value)}
                                         >
                                             <option value="Processing">Processing</option>

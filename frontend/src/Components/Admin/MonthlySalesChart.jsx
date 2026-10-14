@@ -1,34 +1,25 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { getToken } from "../../Utils/helpers";
+import { formatCurrency, getToken } from "../../Utils/helpers";
 import axios from "axios";
-import Loader from '../Layout/Loader';
 
 export default function MonthlySalesChart() {
     const [sales, setSales] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState('')
-    const monthlySales = async () => {
-        try {
-            const config = {
-                headers: {
-
-                    'Authorization': `Bearer ${getToken()}`
-                }
-            }
-
-            const { data } = await axios.get(`${import.meta.env.VITE_API}/admin/sales-per-month`, config)
-            setSales(data.salesPerMonth)
-            // console.log(data.salesPerMonth)
-            setLoading(false)
-
-        } catch (error) {
-            setError(error.response.data.message)
-        }
-    }
     useEffect(() => {
-        monthlySales()
+        let active = true
+        const config = {
+            headers: { Authorization: `Bearer ${getToken()}` }
+        }
 
+        axios.get(`${import.meta.env.VITE_API}/admin/sales-per-month`, config)
+            .then(({ data }) => {
+                if (active) setSales(data.salesPerMonth)
+            })
+            .catch(error => {
+                if (active) console.error(error)
+            })
+
+        return () => { active = false }
     }, [])
 
     return (
@@ -37,8 +28,8 @@ export default function MonthlySalesChart() {
                 <Line type="monotone" dataKey="total" stroke="#8884d8" />
                 <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
                 <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
+                <YAxis tickFormatter={formatCurrency} />
+                <Tooltip formatter={formatCurrency} />
             </LineChart>
         </ResponsiveContainer>
     );

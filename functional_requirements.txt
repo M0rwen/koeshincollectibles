@@ -1,0 +1,60 @@
+Koeshin's Collectibles Requirements checklist
+These are all 31 requirements from the functional requirements document. 
+
+1. User accounts
+1.1 Registration (name, username, email, contact number, password)
+1.2 Login with username or email, via Firebase
+1.3 Google and Facebook login
+1.4 Profile update (details, address, contact, photo)
+1.5 Password recovery by email link
+
+2. Products
+2.1 Browse by category
+2.2 Search by keyword or title
+2.3 Filters (category, price range, rating)
+2.4 Product details page
+2.5 Infinite scroll on the homepage
+
+3. Shopping cart
+3.1 Add to cart, limited by stock
+3.2 Change quantity or remove
+3.3 Subtotal, shipping fee, grand total
+
+4. Orders
+4.1 Checkout (address and payment method)
+4.2 Order reference number and PDF receipt
+4.3 Order history and status
+
+5. Admin
+5.1 Product add, edit, delete, with multiple Cloudinary photos
+5.2 Product table with search, sorting, pagination, bulk delete
+5.3 Order management and status update
+5.4 Status update email with PDF receipt
+5.5 Monthly sales line chart with date filter
+5.6 Delete reviews
+
+6. Reviews and ratings
+6.1 Write a review (buyers only)
+6.2 Edit own review
+6.3 Bad word filter
+
+7. General
+7.1 Form validation
+7.2 Responsive UI
+
+Setup leftovers
+Facebook login (needs a Facebook developer app, so do it last)
+Gmail App Password to replace the prof's SMTP settings (needed for 5.4)
+Final test of every item above, then push to GitHub
+
+Note: leave mailtrap settings and config for last. 
+
+Admin
+Username: admin_test
+Email: admin@koeshin.test
+Password: Admin123!
+
+Customer
+Username: customer_test
+Email: customer@koeshin.test
+Password: Customer123!

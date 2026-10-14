@@ -1,20 +1,42 @@
 import axios from 'axios'
 import { ADD_TO_CART, REMOVE_ITEM_CART, SAVE_SHIPPING_INFO, CLEAR_CART } from '../constants/cartConstants'
+import { errMsg } from '../Utils/helpers'
 
 export const addItemToCart = (id, quantity) => async (dispatch, getState) => {
-    const { data } = await axios.get(`${import.meta.env.VITE_API}/product/${id}`)
-    dispatch({
-        type: ADD_TO_CART,
-        payload: {
-            product: data.product._id,
-            name: data.product.name,
-            price: data.product.price,
-            image: data.product.images[0].url,
-            stock: data.product.stock,
-            quantity
+    try {
+        const { data } = await axios.get(`${import.meta.env.VITE_API}/product/${id}`)
+        const product = data.product
+        const stock = Math.max(0, Number(product.stock) || 0)
+
+        if (stock === 0) {
+            errMsg('This item is out of stock.')
+            return false
         }
-    })
-    localStorage.setItem('cartItems', JSON.stringify(getState().cart.cartItems))
+
+        const requestedQuantity = Number(quantity)
+        const safeQuantity = Math.min(Math.max(1, Number.isFinite(requestedQuantity) ? requestedQuantity : 1), stock)
+
+        if (requestedQuantity > stock) {
+            errMsg(`Only ${stock} available. Cart quantity was adjusted.`)
+        }
+
+        dispatch({
+            type: ADD_TO_CART,
+            payload: {
+                product: product._id,
+                name: product.name,
+                price: product.price,
+                image: product.images?.[0]?.url || '',
+                stock,
+                quantity: safeQuantity
+            }
+        })
+        localStorage.setItem('cartItems', JSON.stringify(getState().cart.cartItems))
+        return true
+    } catch (error) {
+        errMsg(error.response?.data?.message || 'Unable to add this item to your cart.')
+        return false
+    }
 
 }
 

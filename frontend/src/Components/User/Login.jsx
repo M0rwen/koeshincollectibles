@@ -12,7 +12,7 @@ import { login, clearErrors } from '../../actions/userActions'
 
 const Login = () => {
     const { isAuthenticated, error, loading, user } = useSelector(state => state.auth)
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     // const [loading, setLoading] = useState(false)
     let navigate = useNavigate()
@@ -21,8 +21,10 @@ const Login = () => {
 
     const submitHandler = (e) => {
         e.preventDefault();
-        // login(email, password)
-        dispatch(login(email, password))
+        if (!identifier.trim() || !password.trim()) {
+            return;
+        }
+        dispatch(login(identifier.trim(), password))
     }
 
     // const login = async (email, password) => {
@@ -84,13 +86,13 @@ const Login = () => {
                             >
                                 <h1 className="mb-3">Login</h1>
                                 <div className="form-group">
-                                    <label htmlFor="email_field">Email</label>
+                                    <label htmlFor="identifier_field">Username or Email</label>
                                     <input
-                                        type="email"
-                                        id="email_field"
+                                        type="text"
+                                        id="identifier_field"
                                         className="form-control"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        value={identifier}
+                                        onChange={(e) => setIdentifier(e.target.value)}
                                     />
                                 </div>
 

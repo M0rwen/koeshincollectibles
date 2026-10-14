@@ -24,7 +24,7 @@ class APIFeatures {
         const queryCopy = { ...this.queryStr };
         // console.log(queryCopy);
         // Removing fields from the query
-        const removeFields = ['keyword', 'page']
+        const removeFields = ['keyword', 'page'];
         removeFields.forEach(el => delete queryCopy[el]);
 
         let priceFilter = {};
@@ -36,19 +36,32 @@ class APIFeatures {
             if (queryCopy['price[lte]']) {
                 priceFilter.price.$lte = Number(queryCopy['price[lte]']);
             }
-            // priceFilter {
-            //     price: {
-            //         $gte: 100,
-            //         $lte: 1000
-            //     }
-            // }
             delete queryCopy['price[gte]'];
             delete queryCopy['price[lte]'];
         }
 
-        console.log(queryCopy);
+        let ratingFilter = {};
+        if (queryCopy['ratings[gte]'] || queryCopy['ratings[lte]']) {
+            ratingFilter.ratings = {};
+            if (queryCopy['ratings[gte]']) {
+                ratingFilter.ratings.$gte = Number(queryCopy['ratings[gte]']);
+            }
+            if (queryCopy['ratings[lte]']) {
+                ratingFilter.ratings.$lte = Number(queryCopy['ratings[lte]']);
+            }
+            delete queryCopy['ratings[gte]'];
+            delete queryCopy['ratings[lte]'];
+        }
 
-        this.query = this.query.find(priceFilter);
+        const filters = { ...queryCopy };
+        Object.keys(filters).forEach(key => {
+            if (filters[key] === undefined || filters[key] === '') {
+                delete filters[key];
+            }
+        });
+
+        const finalFilter = { ...filters, ...priceFilter, ...ratingFilter };
+        this.query = this.query.find(finalFilter);
         return this;
     }
 

@@ -5,17 +5,25 @@ export const cartReducer = (state = { cartItems: [], shippingInfo: {} }, action)
     switch (action.type) {
         case ADD_TO_CART:
             const item = action.payload
+            const stock = Number(item.stock)
+            if (!Number.isFinite(stock) || stock <= 0) return state
+
+            const safeItem = {
+                ...item,
+                stock,
+                quantity: Math.min(Math.max(1, Number(item.quantity) || 1), stock)
+            }
 
             const isItemExist = state.cartItems.find(i => i.product === item.product)
             if (isItemExist) {
                 return {
                     ...state,
-                    cartItems: state.cartItems.map(i => i.product === isItemExist.product ? item : i)
+                    cartItems: state.cartItems.map(i => i.product === isItemExist.product ? safeItem : i)
                 }
             } else {
                 return {
                     ...state,
-                    cartItems: [...state.cartItems, item]
+                    cartItems: [...state.cartItems, safeItem]
                 }
             }
         case REMOVE_ITEM_CART:

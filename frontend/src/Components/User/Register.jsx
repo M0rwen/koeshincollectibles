@@ -8,11 +8,13 @@ const Register = () => {
 
     const [user, setUser] = useState({
         name: '',
+        username: '',
         email: '',
+        contactNumber: '',
         password: '',
     })
 
-    const { name, email, password } = user;
+    const { name, username, email, contactNumber, password } = user;
 
     const [avatar, setAvatar] = useState('')
     const [avatarPreview, setAvatarPreview] = useState('/images/default_avatar.jpg')
@@ -38,9 +40,21 @@ const Register = () => {
     const submitHandler = (e) => {
         e.preventDefault();
 
+        if (!name || !username || !email || !contactNumber || !password) {
+            setError('Please complete all required fields.');
+            return;
+        }
+
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters long.');
+            return;
+        }
+
         const formData = new FormData();
         formData.set('name', name);
+        formData.set('username', username);
         formData.set('email', email);
+        formData.set('contactNumber', contactNumber);
         formData.set('password', password);
         formData.set('avatar', avatar);
 
@@ -116,6 +130,18 @@ const Register = () => {
                         </div>
 
                         <div className="form-group">
+                            <label htmlFor="username_field">Username</label>
+                            <input
+                                type="text"
+                                id="username_field"
+                                className="form-control"
+                                name='username'
+                                value={username}
+                                onChange={onChange}
+                            />
+                        </div>
+
+                        <div className="form-group">
                             <label htmlFor="email_field">Email</label>
                             <input
                                 type="email"
@@ -123,6 +149,18 @@ const Register = () => {
                                 className="form-control"
                                 name='email'
                                 value={email}
+                                onChange={onChange}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="contact_field">Contact Number</label>
+                            <input
+                                type="tel"
+                                id="contact_field"
+                                className="form-control"
+                                name='contactNumber'
+                                value={contactNumber}
                                 onChange={onChange}
                             />
                         </div>

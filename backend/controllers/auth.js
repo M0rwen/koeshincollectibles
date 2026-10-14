@@ -6,6 +6,13 @@ const sendToken = require('../utils/jwtToken');
 
 exports.registerUser = async (req, res, next) => {
     console.log(req.body)
+
+    const { name, username, email, contactNumber, password } = req.body;
+
+    if (!name || !username || !email || !contactNumber || !password) {
+        return res.status(400).json({ message: 'Please provide name, username, email, contact number and password.' })
+    }
+
     const result = await cloudinary.v2.uploader.upload(req.body.avatar, {
         folder: 'avatars',
         width: 150,
@@ -13,10 +20,11 @@ exports.registerUser = async (req, res, next) => {
     }, (err, res) => {
         console.log(err, res);
     });
-    const { name, email, password, } = req.body;
     const user = await User.create({
         name,
+        username,
         email,
+        contactNumber,
         password,
         avatar: {
             public_id: result.public_id,
@@ -36,19 +44,18 @@ exports.registerUser = async (req, res, next) => {
 
 exports.loginUser = async (req, res, next) => {
     console.log(req.body)
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
-    // Checks if email and password is entered by user
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Please enter email & password' })
+    if (!identifier || !password) {
+        return res.status(400).json({ error: 'Please enter username/email and password' })
     }
 
+    const isEmail = identifier.includes('@');
+    const query = isEmail ? { email: identifier } : { username: identifier };
 
-    // Finding user in database
-
-    let user = await User.findOne({ email }).select('+password')
+    let user = await User.findOne(query).select('+password')
     if (!user) {
-        return res.status(401).json({ message: 'Invalid Email or Password' })
+        return res.status(401).json({ message: 'Invalid username/email or password' })
     }
 
 
@@ -66,7 +73,7 @@ exports.loginUser = async (req, res, next) => {
     //     token,
     //     user
     // });
-    user = await User.findOne({ email })
+    user = await User.findOne(query)
     sendToken(user, 200, res)
 }
 
@@ -151,7 +158,9 @@ exports.updateProfile = async (req, res, next) => {
 
     const newUserData = {
         name: req.body.name,
-        email: req.body.email
+        email: req.body.email,
+        contactNumber: req.body.contactNumber,
+        address: req.body.address || ''
     }
 
     // Update avatar

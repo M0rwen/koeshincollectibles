@@ -10,11 +10,28 @@ const userSchema = new mongoose.Schema({
         required: [true, 'Please enter your name'],
         maxLength: [30, 'Your name cannot exceed 30 characters']
     },
+    username: {
+        type: String,
+        required: [true, 'Please enter your username'],
+        unique: true,
+        trim: true,
+        minlength: [3, 'Username must be at least 3 characters long'],
+        match: [/^[a-zA-Z0-9_.-]+$/, 'Username can only contain letters, numbers, underscores, dots and dashes']
+    },
     email: {
         type: String,
         required: [true, 'Please enter your email'],
         unique: true,
         validate: [validator.isEmail, 'Please enter valid email address']
+    },
+    contactNumber: {
+        type: String,
+        required: [true, 'Please enter your contact number'],
+        match: [/^\+?[0-9\s()-]{8,15}$/, 'Please enter a valid contact number']
+    },
+    address: {
+        type: String,
+        default: ''
     },
     password: {
         type: String,

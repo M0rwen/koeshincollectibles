@@ -60,7 +60,7 @@ import {
 //     }
 // }
 
-export const login = (email, password) => async (dispatch) => {
+export const login = (identifier, password) => async (dispatch) => {
     try {
         dispatch({ type: LOGIN_REQUEST })
         const config = {
@@ -70,7 +70,7 @@ export const login = (email, password) => async (dispatch) => {
             withCredentials: true,
         }
 
-        const { data } = await axios.post(`${import.meta.env.VITE_API}/login`, { email, password }, config)
+        const { data } = await axios.post(`${import.meta.env.VITE_API}/login`, { identifier, password }, config)
         console.log(data.user)
         dispatch({
             type: LOGIN_SUCCESS,

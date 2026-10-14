@@ -1,6 +1,11 @@
 const mongoose = require('mongoose')
 
 const orderSchema = mongoose.Schema({
+    orderReference: {
+        type: String,
+        required: true,
+        unique: true
+    },
     shippingInfo: {
         address: {
             type: String,
@@ -60,6 +65,12 @@ const orderSchema = mongoose.Schema({
         status: {
             type: String
         }
+    },
+    paymentMethod: {
+        type: String,
+        enum: ['Cash on Delivery', 'Card (demo only)'],
+        required: true,
+        default: 'Cash on Delivery'
     },
     paidAt: {
         type: Date

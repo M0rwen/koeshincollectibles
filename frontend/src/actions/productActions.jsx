@@ -19,33 +19,47 @@ import {
     DELETE_PRODUCT_REQUEST,
     DELETE_PRODUCT_SUCCESS,
     DELETE_PRODUCT_FAIL,
+    NEW_REVIEW_REQUEST,
+    NEW_REVIEW_SUCCESS,
+    NEW_REVIEW_FAIL,
 
 
     CLEAR_ERRORS
 } from '../constants/productConstants';
 
-export const getProducts = (currentPage = 1, keyword = '', price, category = '') => async (dispatch) => {
+export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], category = '', rating = '') => async (dispatch) => {
+    let queryKey = ''
     try {
+        const filters = new URLSearchParams()
+        if (keyword) filters.set('keyword', keyword)
+        if (price[0] !== '' && Number.isFinite(Number(price[0]))) filters.set('price[gte]', String(price[0]))
+        if (price[1] !== '' && Number.isFinite(Number(price[1]))) filters.set('price[lte]', String(price[1]))
+        if (category) filters.set('category', category)
+        if (rating) filters.set('ratings[gte]', rating)
+        queryKey = filters.toString()
+
+        const query = new URLSearchParams(filters)
+        query.set('page', String(currentPage))
+
         dispatch({
-            type: ALL_PRODUCTS_REQUEST
+            type: ALL_PRODUCTS_REQUEST,
+            payload: { page: currentPage, queryKey }
         })
 
-        let link = `${import.meta.env.VITE_API}/products?page=${currentPage}&keyword=${keyword}&price[lte]=${price[1]}&price[gte]=${price[0]}`
-
-        if (category) {
-            link = `${import.meta.env.VITE_API}/products?keyword=${keyword}&page=${currentPage}&price[lte]=${price[1]}&price[gte]=${price[0]}&category=${category}`
-        }
+        const link = `${import.meta.env.VITE_API}/products?${query.toString()}`
         const { data } = await axios.get(link)
         console.log(data)
         dispatch({
             type: ALL_PRODUCTS_SUCCESS,
-            payload: data
+            payload: data,
+            meta: { append: currentPage > 1, queryKey }
         })
 
     } catch (error) {
         dispatch({
             type: ALL_PRODUCTS_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message,
+            meta: { queryKey }
         })
     }
 }
@@ -84,7 +98,7 @@ export const newProduct = (productData) => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: NEW_PRODUCT_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message
         })
     }
 }
@@ -126,7 +140,7 @@ export const updateProduct = (id, productData) => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: UPDATE_PRODUCT_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message
         })
     }
 }
@@ -136,7 +150,7 @@ export const deleteProduct = (id) => async (dispatch) => {
 
         dispatch({ type: DELETE_PRODUCT_REQUEST })
 
-        const { data } = await axios.delete(`${import.meta.env.VITE_API}/admin/product/${id}`)
+        const { data } = await axios.delete(`${import.meta.env.VITE_API}/admin/product/${id}`, { withCredentials: true })
 
         dispatch({
             type: DELETE_PRODUCT_SUCCESS,
@@ -146,7 +160,7 @@ export const deleteProduct = (id) => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: DELETE_PRODUCT_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message
         })
     }
 }

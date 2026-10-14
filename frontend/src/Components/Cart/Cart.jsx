@@ -1,15 +1,17 @@
-import React, { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { addItemToCart, removeItemFromCart } from '../../actions/cartActions'
+import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
 
 
 const Cart = () => {
     const dispatch = useDispatch();
     const { cartItems } = useSelector(state => state.cart)
+    const { isAuthenticated } = useSelector(state => state.auth)
     const navigate = useNavigate()
+    const { itemsPrice, shippingPrice, taxPrice, totalPrice } = calculateOrderTotals(cartItems)
 
 
     const increaseQty = (id, quantity, stock) => {
@@ -28,7 +30,7 @@ const Cart = () => {
         dispatch(removeItemFromCart(id))
     }
     const checkoutHandler = () => {
-        navigate('/login?redirect=shipping')
+        navigate(isAuthenticated ? '/shipping' : '/login?redirect=shipping')
     }
     // localStorage.setItem('cartItems', JSON.stringify(cartItems))
 
@@ -37,16 +39,13 @@ const Cart = () => {
             <MetaData title={'Your Cart'} />
             {cartItems.length === 0 ? <h2 className="mt-5">Your Cart is Empty</h2> : (
                 <>
-                    <h2 className="mt-5">Your Cart: <b>{cartItems.length} items</b></h2>
+                    <h2 className="mt-5">Your Cart: <b>{cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}</b></h2>
 
                     <div className="row d-flex justify-content-between">
                         <div className="col-12 col-lg-8">
 
                             {cartItems.map(item => (
-                                <>
-
-
-                                    <div className="cart-item" key={item.product}>
+                                <div className="cart-item" key={item.product}>
                                         <hr />
                                         <div className="row">
                                             <div className="col-4 col-lg-3">
@@ -54,33 +53,33 @@ const Cart = () => {
                                             </div>
 
                                             <div className="col-5 col-lg-3">
-                                                <Link to={`/products/${item.product}`}>{item.name}</Link>
+                                                <Link to={`/product/${item.product}`}>{item.name}</Link>
                                             </div>
 
 
                                             <div className="col-4 col-lg-2 mt-4 mt-lg-0">
-                                                <p id="card_item_price">${item.price}</p>
+                                                <p id="card_item_price">{formatCurrency(item.price)}</p>
                                             </div>
 
                                             <div className="col-4 col-lg-3 mt-4 mt-lg-0">
                                                 <div className="stockCounter d-inline">
-                                                    <span className="btn btn-danger minus" onClick={() => decreaseQty(item.product, item.quantity)}>-</span>
+                                                    <button className="btn btn-danger minus" type="button" aria-label={`Decrease ${item.name} quantity`} disabled={item.quantity <= 1} onClick={() => decreaseQty(item.product, item.quantity)}>-</button>
 
-                                                    <input type="number" className="form-control count d-inline" value={item.quantity} readOnly />
+                                                    <input type="number" className="form-control count d-inline" value={item.quantity} readOnly aria-label={`${item.name} quantity`} />
 
-                                                    <span className="btn btn-primary plus" onClick={() => increaseQty(item.product, item.quantity, item.stock)}>+</span>
+                                                    <button className="btn btn-primary plus" type="button" aria-label={`Increase ${item.name} quantity`} disabled={item.quantity >= item.stock} onClick={() => increaseQty(item.product, item.quantity, item.stock)}>+</button>
                                                 </div>
                                             </div>
 
                                             <div className="col-4 col-lg-1 mt-4 mt-lg-0">
-                                                <i id="delete_cart_item" className="fa fa-trash btn btn-danger" onClick={() => removeCartItemHandler(item.product)} ></i>
-                                                {/* <i id="delete_cart_item" className="fa fa-trash btn btn-danger" ></i> */}
+                                                <button id="delete_cart_item" className="btn btn-danger" type="button" aria-label={`Remove ${item.name} from cart`} onClick={() => removeCartItemHandler(item.product)}>
+                                                    <i className="fa fa-trash" aria-hidden="true" />
+                                                </button>
                                             </div>
 
                                         </div>
-                                    </div>
-                                    <hr />
-                                </>
+                                        <hr />
+                                </div>
                             ))}
 
                         </div>
@@ -89,10 +88,14 @@ const Cart = () => {
                             <div id="order_summary">
                                 <h4>Order Summary</h4>
                                 <hr />
-                                <p>Subtotal:  <span className="order-summary-values">{cartItems.reduce((acc, item) => (acc + Number(item.quantity)), 0)} (Units)</span></p>
-                                <p>Est. total: <span className="order-summary-values">${cartItems.reduce((acc, item) => acc + item.quantity * item.price, 0).toFixed(2)}</span></p>
+                                <p>Subtotal: <span className="order-summary-values">{formatCurrency(itemsPrice)}</span></p>
+                                <p>Shipping: <span className="order-summary-values">{shippingPrice === 0 ? 'FREE' : formatCurrency(shippingPrice)}</span></p>
+                                <p>Estimated tax: <span className="order-summary-values">{formatCurrency(taxPrice)}</span></p>
 
 
+                                <hr />
+                                <p className="cart-grand-total">Grand total: <span className="order-summary-values">{formatCurrency(totalPrice)}</span></p>
+                                <p className="shipping-hint">Free shipping on orders over {formatCurrency(2000)}.</p>
                                 <hr />
                                 <button id="checkout_btn" className="btn btn-primary btn-block" onClick={checkoutHandler}>Check out</button>
                                 {/*<button id="checkout_btn" className="btn btn-primary btn-block" >Check out</button>*/}

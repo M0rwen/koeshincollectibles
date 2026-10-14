@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
 import Sidebar from './SideBar'
@@ -9,6 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useDispatch, useSelector } from 'react-redux'
 import { newProduct, clearErrors } from '../../actions/productActions'
 import { NEW_PRODUCT_RESET } from '../../constants/productConstants'
+import { PRODUCT_CATEGORIES } from '../../constants/productCategories'
 
 const NewProduct = () => {
     const dispatch = useDispatch()
@@ -27,43 +28,45 @@ const NewProduct = () => {
     // const [success, setSuccess] = useState('')
     // const [product, setProduct] = useState({})
 
-    const categories = [
-        'Electronics',
-        'Cameras',
-        'Laptops',
-        'Accessories',
-        'Headphones',
-        'Food',
-        "Books",
-        'Clothes/Shoes',
-        'Beauty/Health',
-        'Sports',
-        'Outdoor',
-        'Home'
-    ]
-
     let navigate = useNavigate()
 
     const submitHandler = (e) => {
         e.preventDefault();
+        if (images.length === 0) {
+            toast.error('Add at least one product image.', { position: 'bottom-right' })
+            return
+        }
 
-        const formData = new FormData();
-        formData.set('name', name);
-        formData.set('price', price);
-        formData.set('description', description);
-        formData.set('category', category);
-        formData.set('stock', stock);
-        formData.set('seller', seller);
-
-        images.forEach(image => {
-            formData.append('images', image)
-        })
-
-        dispatch(newProduct(formData))
+        dispatch(newProduct({
+            name,
+            price: Number(price),
+            description,
+            category,
+            stock: Number(stock),
+            seller,
+            images
+        }))
     }
 
     const onChange = e => {
-        const files = Array.from(e.target.files)
+        const files = Array.from(e.target.files || [])
+        if (files.length > 10) {
+            toast.error('Choose up to 10 product images.', { position: 'bottom-right' })
+            e.target.value = ''
+            return
+        }
+        const totalSize = files.reduce((total, file) => total + file.size, 0)
+        if (files.some(file => file.size > 10 * 1024 * 1024) || totalSize > 35 * 1024 * 1024) {
+            toast.error('Each image must be under 10 MB and all images together under 35 MB.', { position: 'bottom-right' })
+            e.target.value = ''
+            return
+        }
+        if (files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type))) {
+            toast.error('Images must be JPEG, PNG, or WebP.', { position: 'bottom-right' })
+            e.target.value = ''
+            return
+        }
+
         setImagesPreview([]);
         setImages([])
         files.forEach(file => {
@@ -147,7 +150,7 @@ const NewProduct = () => {
                 <div className="col-12 col-md-10">
                     <>
                         <div className="wrapper my-5">
-                            <form className="shadow-lg" onSubmit={submitHandler} encType='multipart/form-data'>
+                            <form className="shadow-lg" onSubmit={submitHandler}>
                                 <h1 className="mb-4">New Product</h1>
 
                                 <div className="form-group">
@@ -156,17 +159,22 @@ const NewProduct = () => {
                                         type="text"
                                         id="name_field"
                                         className="form-control"
+                                        required
+                                        minLength={2}
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                     />
                                 </div>
 
                                 <div className="form-group">
-                                    <label htmlFor="price_field">Price</label>
+                                    <label htmlFor="price_field">Price (PHP)</label>
                                     <input
-                                        type="text"
+                                        type="number"
                                         id="price_field"
                                         className="form-control"
+                                        min="0"
+                                        step="0.01"
+                                        required
                                         value={price}
                                         onChange={(e) => setPrice(e.target.value)}
                                     />
@@ -174,13 +182,14 @@ const NewProduct = () => {
 
                                 <div className="form-group">
                                     <label htmlFor="description_field">Description</label>
-                                    <textarea className="form-control" id="description_field" rows="8" value={description} onChange={(e) => setDescription(e.target.value)}></textarea>
+                                    <textarea className="form-control" id="description_field" rows="8" minLength={10} value={description} onChange={(e) => setDescription(e.target.value)} required></textarea>
                                 </div>
 
                                 <div className="form-group">
                                     <label htmlFor="category_field">Category</label>
-                                    <select className="form-control" id="category_field" value={category} onChange={(e) => setCategory(e.target.value)}>
-                                        {categories.map(category => (
+                                    <select className="form-control" id="category_field" value={category} onChange={(e) => setCategory(e.target.value)} required>
+                                        <option value="">Select a collection</option>
+                                        {PRODUCT_CATEGORIES.map(category => (
                                             <option key={category} value={category} >{category}</option>
                                         ))}
 
@@ -192,6 +201,9 @@ const NewProduct = () => {
                                         type="number"
                                         id="stock_field"
                                         className="form-control"
+                                        min="0"
+                                        step="1"
+                                        required
                                         value={stock}
                                         onChange={(e) => setStock(e.target.value)}
                                     />
@@ -203,6 +215,7 @@ const NewProduct = () => {
                                         type="text"
                                         id="seller_field"
                                         className="form-control"
+                                        required
                                         value={seller}
                                         onChange={(e) => setSeller(e.target.value)}
                                     />
@@ -217,11 +230,13 @@ const NewProduct = () => {
                                             name='images'
                                             className='custom-file-input'
                                             id='customFile'
+                                            accept='image/jpeg,image/png,image/webp'
                                             onChange={onChange}
                                             multiple
+                                            required
                                         />
                                         <label className='custom-file-label' htmlFor='customFile'>
-                                            Choose Images
+                                            Choose up to 10 images
                                         </label>
                                     </div>
 
@@ -236,7 +251,7 @@ const NewProduct = () => {
                                     id="login_button"
                                     type="submit"
                                     className="btn btn-block py-3"
-                                // disabled={loading ? true : false}
+                                    disabled={loading}
                                 >
                                     CREATE
                                 </button>

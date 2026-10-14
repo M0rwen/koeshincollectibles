@@ -19,6 +19,8 @@ const UpdateProfile = () => {
 
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
+    const [contactNumber, setContactNumber] = useState('')
+    const [address, setAddress] = useState('')
     const [avatar, setAvatar] = useState('')
     const [avatarPreview, setAvatarPreview] = useState('/images/default_avatar.jpg')
     // const [error, setError] = useState('')
@@ -87,7 +89,9 @@ const UpdateProfile = () => {
         if (user) {
             setName(user.name);
             setEmail(user.email);
-            setAvatarPreview(user.avatar.url)
+            setContactNumber(user.contactNumber || '');
+            setAddress(user.address || '');
+            setAvatarPreview(user.avatar ? user.avatar.url : '/images/default_avatar.jpg')
         }
         if (error) {
             // alert.error(error);
@@ -109,6 +113,8 @@ const UpdateProfile = () => {
         const formData = new FormData();
         formData.set('name', name);
         formData.set('email', email);
+        formData.set('contactNumber', contactNumber);
+        formData.set('address', address);
         formData.set('avatar', avatar);
         dispatch(updateProfile(formData))
     }
@@ -159,6 +165,30 @@ const UpdateProfile = () => {
                                 name='email'
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="contact_field">Contact Number</label>
+                            <input
+                                type="tel"
+                                id="contact_field"
+                                className="form-control"
+                                name='contactNumber'
+                                value={contactNumber}
+                                onChange={(e) => setContactNumber(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="address_field">Address</label>
+                            <textarea
+                                id="address_field"
+                                className="form-control"
+                                name='address'
+                                value={address}
+                                onChange={(e) => setAddress(e.target.value)}
+                                rows="3"
                             />
                         </div>
 

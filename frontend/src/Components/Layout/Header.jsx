@@ -1,92 +1,56 @@
-import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import Search from './Search'
-// import { getUser, logout } from '../../Utils/helpers'
+import { Link } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../../actions/userActions'
+import Search from './Search'
 
 const Header = () => {
-    const dispatch = useDispatch();
-    const { user, loading } = useSelector(state => state.auth)
+    const dispatch = useDispatch()
+    const { user } = useSelector(state => state.auth)
     const { cartItems } = useSelector(state => state.cart)
-    // const [user, setUser] = useState({})
-    const navigate = useNavigate()
-    // const logoutHandler = () => {
-    //     logout(navigate('/'));
 
-    //     toast.success('log out', {
-    //         position: 'bottom-right'
-    //     });
-    // }
-
-    // useEffect(() => {
-    //     setUser(getUser())
-    // }, []);
     const logoutHandler = () => {
-        dispatch(logout());
-        toast.success('log out', {
-            position: 'bottom-right'
-        });
+        dispatch(logout())
+        toast.success('Logged out', { position: 'bottom-right' })
     }
+
     return (
-
-        <>
-
-            <nav className="navbar row">
-                <div className="col-12 col-md-3">
-                    <div className="navbar-brand">
-                        <Link to="/">
-                            <img src="./images/shopit_logo.png" />
-                        </Link>
-                        {/* <img src="./images/shopit_logo.png" /> */}
-                    </div>
-                </div>
+        <header className="site-header">
+            <div className="site-utility">
+                <span>Curious finds for collectors and the collector-curious</span>
+                <span>Made to be kept, found to be shared</span>
+            </div>
+            <div className="site-nav-wrap">
+                <Link className="site-brand" to="/" aria-label="Koeshin Collectibles home">
+                    <span className="brand-stamp" aria-hidden="true">K</span>
+                    <span className="brand-name">koeshin<span>collectibles</span></span>
+                </Link>
                 <Search />
-                {/* <div className="col-12 col-md-3 mt-4 mt-md-0 text-center">
-                    Login
-                </div>
-                <div className="col-12 col-md-3 mt-4 mt-md-0 text-center">
-                    <span className="ml-1" id="cart_count">2</span>
-                </div> */}
-                <div className="col-12 col-md-3 mt-4 mt-md-0 text-center">
-
-                    {user ? (<div className="ml-4 dropdown d-inline">
-                        <Link to="#!" className="btn dropdown-toggle text-white mr-4" type="button" id="dropDownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <figure className="avatar avatar-nav">
-                                <img
-                                    src={user.avatar && user.avatar.url}
-                                    alt={user && user.name}
-                                    className="rounded-circle"
-                                />
-                            </figure>
-                            <span>{user && user.name}</span>
-                        </Link>
-
-                        <div className="dropdown-menu" aria-labelledby="dropDownMenuButton">
-                            {user && user.role === 'admin' && (
-                                <Link className="dropdown-item" to="/dashboard">Dashboard</Link>
-                            )}
-                            <Link className="dropdown-item" to="/orders/me">Orders</Link>
-                            <Link className="dropdown-item" to="/me">Profile</Link>
-
-                            <Link
-                                className="dropdown-item text-danger" to="/" onClick={logoutHandler}
-                            >
-                                Logout
+                <div className="site-actions">
+                    {user ? (
+                        <>
+                            <Link className="site-account" to="/me" aria-label={`Account for ${user.name}`}>
+                                <span className="account-mark">{user.name?.charAt(0)?.toUpperCase() || 'K'}</span>
+                                <span className="account-label">{user.name?.split(' ')[0] || 'Account'}</span>
                             </Link>
-                        </div>
-                    </div>) : <Link to="/login" className="btn ml-4" id="login_btn">Login</Link>}
-
-                    <Link to="/cart" style={{ textDecoration: 'none' }} >
-                        <span id="cart" className="ml-3">Cart</span>
-                        <span className="ml-1" id="cart_count">{cartItems ? cartItems.length : null}</span>
+                            {user.role === 'admin' && <Link className="site-text-link" to="/dashboard">Studio</Link>}
+                            <button className="site-text-link logout-link" type="button" onClick={logoutHandler}>Sign out</button>
+                        </>
+                    ) : <Link className="site-text-link" to="/login">Sign in</Link>}
+                    <Link className="site-cart" to="/cart" aria-label={`Cart, ${cartItems?.length || 0} items`}>
+                        <i className="fa fa-shopping-bag" aria-hidden="true" />
+                        <span>Bag</span>
+                        <span className="cart-count">{cartItems?.length || 0}</span>
                     </Link>
-                    {/* <span className="ml-1" id="cart_count">{cartItems ? cartItems.length : null}</span>  */}
                 </div>
+            </div>
+            <nav className="site-subnav" aria-label="Main navigation">
+                <Link to="/#shop">Shop all</Link>
+                <Link to="/#collections">Collections</Link>
+                <span>Cards | toys | objects with a past</span>
+                <span className="subnav-note">A cabinet of curiosities, online</span>
             </nav>
-        </>
+        </header>
     )
 }
 

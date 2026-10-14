@@ -1,130 +1,110 @@
-import React, { Fragment, useEffect, useState } from 'react'
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
+import { useDispatch, useSelector } from 'react-redux'
 import MetaData from '../Layout/MetaData'
 import CheckoutSteps from './CheckoutSteps'
-import axios from 'axios';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-// import { getToken } from '../../Utils/helpers';
-import { useDispatch, useSelector } from 'react-redux'
 import { createOrder, clearErrors } from '../../actions/orderActions'
-import { clearCart } from '../../actions/cartActions';
-
-
+import { clearCart } from '../../actions/cartActions'
+import { formatCurrency } from '../../Utils/helpers'
 
 const Payment = () => {
-    const dispatch = useDispatch();
+    const dispatch = useDispatch()
+    const navigate = useNavigate()
     const { cartItems, shippingInfo } = useSelector(state => state.cart)
     const { error, loading } = useSelector(state => state.newOrder)
+    const [orderInfo] = useState(() => JSON.parse(sessionStorage.getItem('orderInfo') || 'null'))
+    const [paymentMethod, setPaymentMethod] = useState(() => (
+        sessionStorage.getItem('paymentMethod') === 'Card (demo only)'
+            ? 'Card (demo only)'
+            : 'Cash on Delivery'
+    ))
 
-    // const [loading, setLoading] = useState(true)
-    let navigate = useNavigate();
-    // useEffect(() => {
-    // }, [])
-
-    const order = {
-        orderItems: cartItems,
-        shippingInfo
-    }
-
-    const orderInfo = JSON.parse(sessionStorage.getItem('orderInfo'));
-    if (orderInfo) {
-        order.itemsPrice = orderInfo.itemsPrice
-        order.shippingPrice = orderInfo.shippingPrice
-        order.taxPrice = orderInfo.taxPrice
-        order.totalPrice = orderInfo.totalPrice
-    }
-
-    // const createOrder = async (order) => {
-    //     console.log(order)
-    //     try {
-    //         const config = {
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //                 'Authorization': `Bearer ${getToken()}`
-    //             }
-    //         }
-    //         const { data } = await axios.post(`${import.meta.env.VITE_API}/order/new`, order, config)
-    //         // setIsUpdated(data.success)
-    //         setLoading(false)
-    //         toast.success('order created', {
-    //             position: toast.POSITION.BOTTOM_RIGHT
-    //         });
-
-    //         // sessionStorage.removeItem('orderInfo')
-    //         // navigate('/success')
-
-    //     } catch (error) {
-    //         toast.error(error.response.data.message, {
-    //             position: toast.POSITION.BOTTOM_RIGHT
-    //         });
-    //     }
-    // }
-
-    const submitHandler = (e) => {
-        e.preventDefault();
-        document.querySelector('#pay_btn').disabled = true;
-        order.paymentInfo = {
-            id: 'pi_1DpdYh2eZvKYlo2CYIynhU32',
-            status: 'succeeded'
+    useEffect(() => {
+        if (error) {
+            toast.error(error, { position: 'bottom-right' })
+            dispatch(clearErrors())
         }
-        dispatch(createOrder(order))
-        toast.success('order created', {
-            position: 'bottom-right'
-        })
+    }, [error, dispatch])
+
+    const selectPaymentMethod = (method) => {
+        setPaymentMethod(method)
+        sessionStorage.setItem('paymentMethod', method)
+    }
+
+    const submitHandler = async (event) => {
+        event.preventDefault()
+        if (!orderInfo || cartItems.length === 0) {
+            navigate('/cart')
+            return
+        }
+
+        const order = {
+            orderItems: cartItems,
+            shippingInfo,
+            ...orderInfo,
+            paymentMethod,
+            paymentInfo: { id: '', status: 'pending' }
+        }
+
+        const createdOrder = await dispatch(createOrder(order))
+        if (!createdOrder) return
+
+        sessionStorage.setItem('lastOrderReceipt', JSON.stringify(createdOrder))
         dispatch(clearCart())
+        sessionStorage.removeItem('orderInfo')
+        sessionStorage.removeItem('paymentMethod')
+        toast.success(paymentMethod === 'Cash on Delivery'
+            ? 'Order placed. Payment is due on delivery.'
+            : 'Demo order placed. No card payment was processed.', { position: 'bottom-right' })
         navigate('/success')
     }
 
     return (
         <>
-            <MetaData title={'Payment'} />
+            <MetaData title="Payment method" />
             <CheckoutSteps shipping confirmOrder payment />
-            <div className="row wrapper">
-                <div className="col-10 col-lg-5">
-                    <form className="shadow-lg" onSubmit={submitHandler}>
-                        <h1 className="mb-4">Card Info</h1>
-                        <div className="form-group">
-                            <label htmlFor="card_num_field">Card Number</label>
+            <main className="payment-page">
+                <form className="payment-panel" onSubmit={submitHandler}>
+                    <p className="store-kicker">CHECKOUT</p>
+                    <h1>Payment method</h1>
+                    <fieldset className="payment-method-list">
+                        <legend className="sr-only">Choose a payment method</legend>
+                        <label className={`payment-method-option${paymentMethod === 'Cash on Delivery' ? ' is-selected' : ''}`}>
                             <input
-                                type="text"
-                                id="card_num_field"
-                                className="form-control"
-
+                                type="radio"
+                                name="paymentMethod"
+                                value="Cash on Delivery"
+                                checked={paymentMethod === 'Cash on Delivery'}
+                                onChange={() => selectPaymentMethod('Cash on Delivery')}
                             />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="card_exp_field">Card Expiry</label>
+                            <span><strong>Cash on delivery</strong><small>Pay in cash when your order arrives.</small></span>
+                        </label>
+                        <label className={`payment-method-option${paymentMethod === 'Card (demo only)' ? ' is-selected' : ''}`}>
                             <input
-                                type="text"
-                                id="card_exp_field"
-                                className="form-control"
-
+                                type="radio"
+                                name="paymentMethod"
+                                value="Card (demo only)"
+                                checked={paymentMethod === 'Card (demo only)'}
+                                onChange={() => selectPaymentMethod('Card (demo only)')}
                             />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="card_cvc_field">Card CVC</label>
-                            <input
-                                type="text"
-                                id="card_cvc_field"
-                                className="form-control"
-
-                            />
-                        </div>
-                        <button
-                            id="pay_btn"
-                            type="submit"
-                            className="btn btn-block py-3"
-                        >
-                            Pay {` - ${orderInfo && orderInfo.totalPrice}`}
-                        </button>
-
-                    </form>
-                </div>
-            </div>
-
+                            <span><strong>Card payment (demo only)</strong><small>No card details are collected and no charge is processed.</small></span>
+                        </label>
+                    </fieldset>
+                    <div className="payment-total">
+                        <span>Amount due</span>
+                        <strong>{formatCurrency(orderInfo?.totalPrice ?? 0)}</strong>
+                    </div>
+                    <button
+                        id="pay_btn"
+                        type="submit"
+                        className="store-button store-button-dark payment-submit"
+                        disabled={loading || !orderInfo || cartItems.length === 0}
+                    >
+                        {loading ? 'Placing order...' : 'Place order'}
+                    </button>
+                </form>
+            </main>
         </>
     )
 }

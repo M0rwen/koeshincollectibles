@@ -1,6 +1,29 @@
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+export const formatCurrency = (amount) => new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP'
+}).format(Number(amount) || 0)
+
+export const calculateOrderTotals = (cartItems) => {
+    const itemsPriceCents = cartItems.reduce((total, item) => {
+        const price = Number(item.price)
+        const quantity = Number(item.quantity)
+        if (!Number.isFinite(price) || !Number.isFinite(quantity)) return total
+        return total + Math.round(price * 100) * Math.max(0, quantity)
+    }, 0)
+    const shippingPriceCents = itemsPriceCents > 200000 ? 0 : 15000
+    const taxPriceCents = Math.round(itemsPriceCents * 0.05)
+
+    return {
+        itemsPrice: itemsPriceCents / 100,
+        shippingPrice: shippingPriceCents / 100,
+        taxPrice: taxPriceCents / 100,
+        totalPrice: (itemsPriceCents + shippingPriceCents + taxPriceCents) / 100
+    }
+}
+
 export const authenticate = (data, next) => {
     if (window !== 'undefined') {
         // console.log('authenticate', response)
