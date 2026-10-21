@@ -93,9 +93,11 @@ const ProductDetails = () => {
 
             const { data } = await axios.put(`${import.meta.env.VITE_API}/review`, reviewData, config)
             setSuccess(data.success)
+            setErrorReview('')
 
         } catch (error) {
-            setErrorReview(error.response.data.message)
+            setErrorReview(error.response?.data?.message || 'Failed to submit review.')
+            setSuccess(false)
         }
     }
 
@@ -177,7 +179,8 @@ const ProductDetails = () => {
                         Submit Your Review
                     </button> :
                         <div className="alert alert-danger mt-5" type='alert'>Login to post your review.</div>}
-                    {(errorReview || success) && <p className="review-feedback" role="status">{errorReview || 'Review submitted.'}</p>}
+                    {errorReview && <p className="review-feedback" role="alert" style={{ color: 'red' }}>{errorReview}</p>}
+                    {success && !errorReview && <p className="review-feedback" role="status" style={{ color: 'green' }}>Review submitted successfully.</p>}
 
                     {/* <div className="row mt-2 mb-5">
                         <div className="rating w-50">

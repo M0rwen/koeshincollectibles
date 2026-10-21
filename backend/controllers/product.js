@@ -5,6 +5,8 @@ const fs = require('fs/promises')
 const path = require('path')
 const { randomUUID } = require('crypto')
 const APIFeatures = require('../utils/apiFeatures');
+const Filter = require('bad-words');
+const badWordsFilter = new Filter();
 
 const productImageDirectory = path.resolve(__dirname, '../../frontend/public/images/products')
 const maxImageBytes = 10 * 1024 * 1024
@@ -229,6 +231,28 @@ exports.deleteProduct = async (req, res, next) => {
 
 exports.createProductReview = async (req, res, next) => {
     const { rating, comment, productId } = req.body;
+
+    // 6.1 — buyers only: the reviewer must have a Delivered order containing this product
+    const purchasedOrder = await Order.findOne({
+        user: req.user._id,
+        orderStatus: 'Delivered',
+        'orderItems.product': productId
+    })
+    if (!purchasedOrder) {
+        return res.status(403).json({
+            success: false,
+            message: 'You can only review products you have purchased and received.'
+        })
+    }
+
+    // 6.3 — bad word filter
+    if (comment && badWordsFilter.isProfane(comment)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Your review contains inappropriate language. Please revise your comment.'
+        })
+    }
+
     const review = {
         user: req.user._id,
         name: req.user.name,

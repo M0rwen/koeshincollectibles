@@ -26,6 +26,8 @@ const ProductsList = () => {
     const [selectedIds, setSelectedIds] = useState([])
     const [searchTerm, setSearchTerm] = useState('')
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+    const [currentPage, setCurrentPage] = useState(1)
+    const ITEMS_PER_PAGE = 10
 
     useEffect(() => {
         console.log('ProductsList mounting, dispatching getAdminProducts')
@@ -88,6 +90,12 @@ const ProductsList = () => {
             direction = 'desc'
         }
         setSortConfig({ key, direction })
+        setCurrentPage(1)
+    }
+
+    const handleSearch = (value) => {
+        setSearchTerm(value)
+        setCurrentPage(1)
     }
 
     const filteredProducts = products && Array.isArray(products) 
@@ -112,9 +120,15 @@ const ProductsList = () => {
             : bValue - aValue
     })
 
+    const totalPages = Math.ceil(sortedProducts.length / ITEMS_PER_PAGE)
+    const paginatedProducts = sortedProducts.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    )
+
     const handleSelectAll = (e) => {
         if (e.target.checked) {
-            setSelectedIds(sortedProducts.map(p => p._id))
+            setSelectedIds(paginatedProducts.map(p => p._id))
         } else {
             setSelectedIds([])
         }
@@ -149,7 +163,7 @@ const ProductsList = () => {
                                         type="text"
                                         placeholder="Search products..."
                                         value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onChange={(e) => handleSearch(e.target.value)}
                                         style={{ width: '300px' }}
                                     />
                                     <button 
@@ -167,7 +181,7 @@ const ProductsList = () => {
                                             <th style={{ width: '50px' }}>
                                                 <Form.Check
                                                     type="checkbox"
-                                                    checked={selectedIds.length === sortedProducts.length && sortedProducts.length > 0}
+                                                    checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedIds.includes(p._id))}
                                                     onChange={handleSelectAll}
                                                 />
                                             </th>
@@ -187,7 +201,7 @@ const ProductsList = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {sortedProducts.map(product => (
+                                        {paginatedProducts.map(product => (
                                             <tr key={product._id}>
                                                 <td>
                                                     <Form.Check
@@ -214,6 +228,42 @@ const ProductsList = () => {
                                 </Table>
                                 {sortedProducts.length === 0 && (
                                     <div className="alert alert-info">No products found</div>
+                                )}
+                                {totalPages > 1 && (
+                                    <div className="d-flex justify-content-between align-items-center mt-3">
+                                        <span className="text-muted" style={{ fontSize: '0.9rem' }}>
+                                            Page {currentPage} of {totalPages} &mdash; {sortedProducts.length} product{sortedProducts.length !== 1 ? 's' : ''}
+                                        </span>
+                                        <div>
+                                            <button
+                                                className="btn btn-outline-secondary btn-sm mr-2"
+                                                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                                                disabled={currentPage === 1}
+                                            >← Prev</button>
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                                                .reduce((acc, p, idx, arr) => {
+                                                    if (idx > 0 && arr[idx - 1] !== p - 1) acc.push('...')
+                                                    acc.push(p)
+                                                    return acc
+                                                }, [])
+                                                .map((item, idx) =>
+                                                    item === '...'
+                                                        ? <span key={`ellipsis-${idx}`} className="mx-1">…</span>
+                                                        : <button
+                                                            key={item}
+                                                            className={`btn btn-sm mx-1 ${currentPage === item ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                                            onClick={() => setCurrentPage(item)}
+                                                          >{item}</button>
+                                                )
+                                            }
+                                            <button
+                                                className="btn btn-outline-secondary btn-sm ml-2"
+                                                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                                                disabled={currentPage === totalPages}
+                                            >Next →</button>
+                                        </div>
+                                    </div>
                                 )}
                             </>
                         )}

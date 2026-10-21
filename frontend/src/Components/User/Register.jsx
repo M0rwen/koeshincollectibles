@@ -117,15 +117,20 @@ const Register = () => {
                     <form className="shadow-lg" onSubmit={submitHandler} encType='multipart/form-data'>
                         <h1 className="mb-3">Register</h1>
 
+                        {error && (
+                            <div className="alert alert-danger" role="alert">{error}</div>
+                        )}
+
                         <div className="form-group">
-                            <label htmlFor="email_field">Name</label>
+                            <label htmlFor="name_field">Name</label>
                             <input
-                                type="name"
+                                type="text"
                                 id="name_field"
                                 className="form-control"
                                 name='name'
                                 value={name}
                                 onChange={onChange}
+                                required
                             />
                         </div>
 
@@ -138,6 +143,7 @@ const Register = () => {
                                 name='username'
                                 value={username}
                                 onChange={onChange}
+                                required
                             />
                         </div>
 
@@ -150,6 +156,7 @@ const Register = () => {
                                 name='email'
                                 value={email}
                                 onChange={onChange}
+                                required
                             />
                         </div>
 
@@ -162,6 +169,7 @@ const Register = () => {
                                 name='contactNumber'
                                 value={contactNumber}
                                 onChange={onChange}
+                                required
                             />
                         </div>
 
@@ -173,7 +181,9 @@ const Register = () => {
                                 className="form-control"
                                 name='password'
                                 value={password}
+                                minLength={6}
                                 onChange={onChange}
+                                required
                             />
                         </div>
 

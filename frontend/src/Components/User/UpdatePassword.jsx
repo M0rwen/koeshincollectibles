@@ -63,10 +63,11 @@ const UpdatePassword = () => {
 
     useEffect(() => {
         if (error) {
-            console.log(error)
+            toast.error(error, { position: 'bottom-right' })
             dispatch(clearErrors());
         }
         if (isUpdated) {
+            toast.success('Password updated successfully', { position: 'bottom-right' })
             navigate('/me')
             dispatch({
                 type: UPDATE_PASSWORD_RESET
@@ -78,11 +79,17 @@ const UpdatePassword = () => {
 
     const submitHandler = (e) => {
         e.preventDefault();
-
+        if (!oldPassword.trim() || !password.trim()) {
+            toast.error('Please fill in both password fields.', { position: 'bottom-right' })
+            return
+        }
+        if (password.length < 6) {
+            toast.error('New password must be at least 6 characters.', { position: 'bottom-right' })
+            return
+        }
         const formData = new FormData();
         formData.set('oldPassword', oldPassword);
         formData.set('password', password);
-
         dispatch(updatePassword(formData))
     }
 
@@ -102,6 +109,7 @@ const UpdatePassword = () => {
                                 className="form-control"
                                 value={oldPassword}
                                 onChange={(e) => setOldPassword(e.target.value)}
+                                required
                             />
                         </div>
 
@@ -112,7 +120,9 @@ const UpdatePassword = () => {
                                 id="new_password_field"
                                 className="form-control"
                                 value={password}
+                                minLength={6}
                                 onChange={(e) => setPassword(e.target.value)}
+                                required
                             />
                         </div>
 

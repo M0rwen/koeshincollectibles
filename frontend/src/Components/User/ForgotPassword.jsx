@@ -1,14 +1,10 @@
-import React, { useState, } from 'react'
+import React, { useState, useEffect } from 'react'
 
 import MetaData from '../Layout/MetaData'
-import axios from 'axios'
 import { toast } from 'react-toastify';
-
 import 'react-toastify/dist/ReactToastify.css';
-import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux'
 import { forgotPassword } from '../../actions/userActions';
-
 
 
 const ForgotPassword = () => {
@@ -40,8 +36,21 @@ const ForgotPassword = () => {
     // }
 
 
+    useEffect(() => {
+        if (message) {
+            toast.success(message, { position: 'bottom-right' })
+        }
+        if (error) {
+            toast.error(error, { position: 'bottom-right' })
+        }
+    }, [message, error])
+
     const submitHandler = (e) => {
         e.preventDefault();
+        if (!email.trim()) {
+            toast.error('Please enter your email address.', { position: 'bottom-right' })
+            return
+        }
         const formData = new FormData();
         formData.set('email', email);
         dispatch(forgotPassword(formData))
@@ -64,6 +73,7 @@ const ForgotPassword = () => {
                                 className="form-control"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                required
                             />
                         </div>
 
