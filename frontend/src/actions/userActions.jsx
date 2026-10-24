@@ -86,6 +86,24 @@ export const login = (identifier, password) => async (dispatch) => {
     }
 }
 
+// Send the Google ID token to our backend and log the user in
+export const loginWithGoogle = (idToken) => async (dispatch) => {
+    try {
+        dispatch({ type: LOGIN_REQUEST })
+        const { data } = await axios.post(
+            `${import.meta.env.VITE_API}/auth/firebase`,
+            { idToken },
+            { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
+        )
+        dispatch({ type: LOGIN_SUCCESS, payload: data.user })
+    } catch (error) {
+        dispatch({
+            type: LOGIN_FAIL,
+            payload: error.response?.data?.message || 'Google login failed'
+        })
+    }
+}
+
 export const logout = () => async (dispatch) => {
     try {
         const config = {
