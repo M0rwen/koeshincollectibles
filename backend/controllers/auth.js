@@ -49,7 +49,7 @@ exports.firebaseLogin = async (req, res) => {
             name: name || 'Google User',
             username,
             email,
-            contactNumber: 'N/A',   // placeholder — user can update in their profile
+            contactNumber: '00000000', // placeholder — user can update in their profile
             password: tempPassword,
             avatar,
         });

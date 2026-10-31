@@ -1,14 +1,21 @@
-const admin = require('firebase-admin');
+// firebase-admin v10+ uses a modular API — the legacy .apps / .credential
+// properties no longer exist on the default export.  Import from the correct
+// sub-package paths instead.
+const { initializeApp, getApps, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
 const path = require('path');
 
-// Load the service-account key that already lives in backend/config/
-// We never print its contents — we just pass the file path to firebase-admin.
+// Load the service-account key — contents are never logged or printed.
 const serviceAccount = require(path.join(__dirname, 'firebase-service-account.json'));
 
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+// Guard against double-initialisation (e.g. hot-reload in dev)
+if (getApps().length === 0) {
+    initializeApp({
+        credential: cert(serviceAccount),
     });
 }
 
-module.exports = admin;
+// Export a thin wrapper so controllers can keep calling admin.auth().verifyIdToken()
+module.exports = {
+    auth: () => getAuth(),
+};
