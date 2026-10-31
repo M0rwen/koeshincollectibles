@@ -47,6 +47,11 @@ const ScrollToTop = () => {
   return null
 }
 
+const CatalogPage = () => {
+  const { pathname } = useLocation()
+  return <Home key={pathname} />
+}
+
 function App() {
 
   // const [state, setState] = useState({
@@ -129,10 +134,13 @@ function App() {
         {/* <Header cartItems={state.cartItems} /> */}
         <Header />
         <Routes>
-          <Route path="/" element={<Home />} exact="true" />
+          <Route path="/" element={<CatalogPage />} exact="true" />
+          <Route path="/shop" element={<CatalogPage />} />
+          <Route path="/collections" element={<CatalogPage />} />
+          <Route path="/collections/:category" element={<CatalogPage />} />
           {/* <Route path="/product/:id" element={<ProductDetails cartItems={state.cartItems} addItemToCart={addItemToCart} />} exact="true" /> */}
           <Route path="/product/:id" element={<ProductDetails />} exact="true" />
-          <Route path="/search/:keyword" element={<Home />} exact="true" />
+          <Route path="/search/:keyword" element={<CatalogPage />} exact="true" />
           <Route path="/login" element={<Login />} exact="true" />
           <Route path="/register" element={<Register exact="true" />} />
           <Route path="/password/forgot" element={<ForgotPassword />} exact="true" />

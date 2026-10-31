@@ -45,8 +45,8 @@ const Header = () => {
                 </div>
             </div>
             <nav className="site-subnav" aria-label="Main navigation">
-                <Link to="/#shop">Shop all</Link>
-                <Link to="/#collections">Collections</Link>
+                <Link to="/shop">Shop all</Link>
+                <Link to="/collections">Collections</Link>
                 <span>Cards | toys | objects with a past</span>
                 <span className="subnav-note">A cabinet of curiosities, online</span>
             </nav>
