@@ -3,6 +3,7 @@ const crypto = require('crypto')
 const cloudinary = require('cloudinary')
 const sendEmail = require('../utils/sendEmail')
 const sendToken = require('../utils/jwtToken');
+const getAuthCookieOptions = require('../utils/authCookieOptions')
 const admin = require('../config/firebaseAdmin');
 
 // ─── Google / Firebase login ──────────────────────────────────────────────────
@@ -333,10 +334,7 @@ exports.updateUser = async (req, res, next) => {
 }
 
 exports.logout = async (req, res, next) => {
-    res.cookie('token', null, {
-        expires: new Date(Date.now()),
-        httpOnly: true
-    })
+    res.cookie('token', null, getAuthCookieOptions(new Date(0)))
 
     return res.status(200).json({
         success: true,

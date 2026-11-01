@@ -6,9 +6,13 @@ const products = require('./routes/product');
 const auth = require('./routes/auth');
 const order = require('./routes/order');
 
-// app.use(cors());
+const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:5173')
+    .split(',')
+    .map(origin => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean)
+
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     credentials: true
 }));
 app.use(cookieParser());

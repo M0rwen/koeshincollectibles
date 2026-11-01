@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../../actions/userActions'
@@ -6,12 +6,18 @@ import Search from './Search'
 
 const Header = ({ theme, onToggleTheme }) => {
     const dispatch = useDispatch()
+    const navigate = useNavigate()
     const { user } = useSelector(state => state.auth)
     const { cartItems } = useSelector(state => state.cart)
 
-    const logoutHandler = () => {
-        dispatch(logout())
-        toast.success('Logged out', { position: 'bottom-right' })
+    const logoutHandler = async () => {
+        const loggedOut = await dispatch(logout())
+        navigate('/login', { replace: true })
+        if (loggedOut) {
+            toast.success('Logged out', { position: 'bottom-right' })
+        } else {
+            toast.error('Signed out here, but the server could not end the session.', { position: 'bottom-right' })
+        }
     }
 
     return (

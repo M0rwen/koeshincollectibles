@@ -304,6 +304,19 @@ footer {
   background-color: var(--shop-surface-raised);
 }
 
+.form-control[aria-invalid='true'] {
+  border-color: var(--shop-danger);
+}
+
+.field-error {
+  display: block;
+  margin-top: 5px;
+  color: var(--shop-danger);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
 /* Login & Register */
 
 .wrapper {
@@ -1898,6 +1911,39 @@ html[data-theme='dark'] {
 
 .footer-inner > a:last-child {
   text-decoration: none;
+}
+
+.footer-contact {
+  display: grid;
+  gap: 5px;
+  max-width: 290px;
+}
+
+.footer-contact h2 {
+  margin: 0;
+  color: var(--shop-yellow);
+  font-family: var(--shop-display);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.footer-contact a {
+  width: fit-content;
+  color: #eff4eb;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.footer-contact a:hover {
+  color: var(--shop-yellow);
+}
+
+.footer-contact p {
+  margin: 0;
+  color: #c4d0c3;
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .footer-bottom {

@@ -41,15 +41,31 @@ import {
     CLEAR_ERRORS
 } from '../constants/userConstants'
 
-export const authReducer = (state = { user: {} }, action) => {
+export const authReducer = (state = {
+    user: null,
+    isAuthenticated: false,
+    loading: true,
+    sessionRestored: false,
+    sessionError: null
+}, action) => {
     switch (action.type) {
         case REGISTER_USER_REQUEST:
-        case LOGIN_REQUEST:
-        case LOAD_USER_REQUEST:
             return {
                 ...state,
                 loading: true,
                 isAuthenticated: false,
+            }
+        case LOGIN_REQUEST:
+            return {
+                ...state,
+                loading: true,
+                error: null
+            }
+        case LOAD_USER_REQUEST:
+            return {
+                ...state,
+                loading: true,
+                sessionError: null
             }
         case REGISTER_USER_SUCCESS:
         case LOGIN_SUCCESS:
@@ -58,11 +74,13 @@ export const authReducer = (state = { user: {} }, action) => {
                 ...state,
                 loading: false,
                 isAuthenticated: true,
-                user: action.payload
+                user: action.payload,
+                sessionRestored: true,
+                sessionError: null,
+                error: null
             }
         case REGISTER_USER_FAIL:
         case LOGIN_FAIL:
-        case LOAD_USER_FAIL:
             return {
                 ...state,
                 loading: false,
@@ -70,17 +88,43 @@ export const authReducer = (state = { user: {} }, action) => {
                 user: null,
                 error: action.payload
             }
+        case LOAD_USER_FAIL: {
+            const status = action.payload?.status
+            if (status === 401) {
+                return {
+                    ...state,
+                    loading: false,
+                    isAuthenticated: false,
+                    user: null,
+                    sessionRestored: true,
+                    sessionError: null
+                }
+            }
+
+            return {
+                ...state,
+                loading: false,
+                sessionError: action.payload?.message || 'Could not restore your session. Check your connection and retry.'
+            }
+        }
 
         case LOGOUT_SUCCESS:
             return {
                 ...state,
                 loading: false,
                 isAuthenticated: false,
-                user: null
+                user: null,
+                sessionRestored: true,
+                sessionError: null
             }
         case LOGOUT_FAIL:
             return {
                 ...state,
+                loading: false,
+                isAuthenticated: false,
+                user: null,
+                sessionRestored: true,
+                sessionError: null,
                 error: action.payload
             }
         case CLEAR_ERRORS:

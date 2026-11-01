@@ -1,258 +1,263 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useFormik } from 'formik'
 import MetaData from '../Layout/MetaData'
 import Sidebar from './SideBar'
-
-import { useParams, useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useDispatch, useSelector } from 'react-redux'
 import { updateProduct, getProductDetails, clearErrors } from '../../actions/productActions'
 import { UPDATE_PRODUCT_RESET } from '../../constants/productConstants'
 import { PRODUCT_CATEGORIES } from '../../constants/productCategories'
+import { createUpdateProductSchema } from '../../validation/schemas'
 
+const readImage = file => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+        if (typeof reader.result === 'string') resolve(reader.result)
+        else reject(new Error('Could not read the selected image.'))
+    }
+    reader.onerror = () => reject(new Error('Could not read the selected image.'))
+    reader.readAsDataURL(file)
+})
 
 const UpdateProduct = () => {
     const dispatch = useDispatch()
-    const { error, product } = useSelector(state => state.productDetails);
-    const { loading, error: updateError, isUpdated } = useSelector(state => state.product);
+    const { error, product } = useSelector(state => state.productDetails)
+    const { loading, error: updateError, isUpdated } = useSelector(state => state.product)
+    const { id } = useParams()
+    const navigate = useNavigate()
+    const oldImages = product?._id === id ? product.images || [] : []
+    const validationSchema = useMemo(
+        () => createUpdateProductSchema(oldImages.length),
+        [oldImages.length]
+    )
+    const formik = useFormik({
+        enableReinitialize: true,
+        initialValues: {
+            name: product?._id === id ? product.name : '',
+            price: product?._id === id ? product.price : '',
+            description: product?._id === id ? product.description : '',
+            category: product?._id === id ? product.category : '',
+            stock: product?._id === id ? product.stock : 0,
+            seller: product?._id === id ? product.seller : '',
+            images: []
+        },
+        validationSchema,
+        validateOnMount: true,
+        onSubmit: values => dispatch(updateProduct(product._id, {
+            ...values,
+            price: Number(values.price),
+            stock: Number(values.stock)
+        }))
+    })
 
-    // console.log(product)
-    const [name, setName] = useState('');
-    const [price, setPrice] = useState(0);
-    const [description, setDescription] = useState('');
-    const [category, setCategory] = useState('');
-    const [stock, setStock] = useState(0);
-    const [seller, setSeller] = useState('');
-    const [images, setImages] = useState([]);
-    const [oldImages, setOldImages] = useState([]);
-    const [imagesPreview, setImagesPreview] = useState([])
-    // const [error, setError] = useState('')
-    // const [product, setProduct] = useState({})
-    // const [loading, setLoading] = useState(true)
-    // const [updateError, setUpdateError] = useState('')
-    // const [isUpdated, setIsUpdated] = useState(false)
-
-    let { id } = useParams();
-    let navigate = useNavigate();
-
-    const errMsg = (message = '') => toast.error(message, {
-        position: 'bottom-right'
-    });
-    const successMsg = (message = '') => toast.success(message, {
-        position: 'bottom-right'
-    });
-
-    // const getProductDetails = async (id) => {
-    //     try {
-    //         const { data } = await axios.get(`${import.meta.env.VITE_API}/product/${id}`)
-    //         setProduct(data.product)
-    //         setLoading(false)
-
-    //     } catch (error) {
-    //         setError(error.response.data.message)
-
-    //     }
-    // }
-
-    // const updateProduct = async (id, productData) => {
-    //     try {
-
-    //         const config = {
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //                 'Authorization': `Bearer ${getToken()}`
-    //             }
-    //         }
-    //         const { data } = await axios.put(`${import.meta.env.VITE_API}/admin/product/${id}`, productData, config)
-    //         setIsUpdated(data.success)
-
-    //     } catch (error) {
-    //         setUpdateError(error.response.data.message)
-
-    //     }
-    // }
     useEffect(() => {
-        if (product && product._id !== id) {
+        if (!product || product._id !== id) {
             dispatch(getProductDetails(id))
-        } else {
-            setName(product.name);
-            setPrice(product.price);
-            setDescription(product.description);
-            setCategory(product.category);
-            setSeller(product.seller);
-            setStock(product.stock)
-            setOldImages(product.images)
         }
-        if (error) {
-            errMsg(error)
-            dispatch(clearErrors())
 
+        if (error) {
+            toast.error(error, { position: 'bottom-right' })
+            dispatch(clearErrors())
         }
         if (updateError) {
-            errMsg(updateError);
+            toast.error(updateError, { position: 'bottom-right' })
             dispatch(clearErrors())
-
         }
         if (isUpdated) {
-            navigate('/admin/products');
-            successMsg('Product updated successfully');
+            navigate('/admin/products')
+            toast.success('Product updated successfully', { position: 'bottom-right' })
             dispatch({ type: UPDATE_PRODUCT_RESET })
-
         }
     }, [error, updateError, product, id, isUpdated, dispatch, navigate])
 
-    const submitHandler = (e) => {
-        e.preventDefault();
-        dispatch(updateProduct(product._id, {
-            name,
-            price: Number(price),
-            description,
-            category,
-            stock: Number(stock),
-            seller,
-            images
-        }))
-    }
-    const onChange = e => {
-        const files = Array.from(e.target.files || [])
-        if (files.length > 10) {
-            toast.error('Choose up to 10 product images.', { position: 'bottom-right' })
-            e.target.value = ''
-            return
-        }
-        const totalSize = files.reduce((total, file) => total + file.size, 0)
-        if (files.some(file => file.size > 10 * 1024 * 1024) || totalSize > 35 * 1024 * 1024) {
-            toast.error('Each image must be under 10 MB and all images together under 35 MB.', { position: 'bottom-right' })
-            e.target.value = ''
-            return
-        }
-        if (files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type))) {
-            toast.error('Images must be JPEG, PNG, or WebP.', { position: 'bottom-right' })
-            e.target.value = ''
+    const onImagesChange = async event => {
+        const files = Array.from(event.target.files || [])
+        if (!files.length) {
+            formik.setFieldTouched('images', true, false)
+            formik.setFieldValue('images', [])
             return
         }
 
-        setImagesPreview([]);
-        setImages([])
-        setOldImages([])
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                if (reader.readyState === 2) {
-                    setImagesPreview(oldArray => [...oldArray, reader.result])
-                    setImages(oldArray => [...oldArray, reader.result])
-                }
-            }
-            reader.readAsDataURL(file)
-        })
+        const totalSize = files.reduce((total, file) => total + file.size, 0)
+        const validationMessage = files.length > 10
+            ? 'Choose up to 10 product images.'
+            : files.some(file => file.size > 10 * 1024 * 1024) || totalSize > 35 * 1024 * 1024
+                ? 'Each image must be under 10 MB and all images together under 35 MB.'
+                : files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
+                    ? 'Images must be JPEG, PNG, or WebP.'
+                    : ''
+
+        formik.setFieldTouched('images', true, false)
+        if (validationMessage) {
+            formik.setFieldError('images', validationMessage)
+            toast.error(validationMessage, { position: 'bottom-right' })
+            event.target.value = ''
+            return
+        }
+
+        try {
+            formik.setFieldValue('images', await Promise.all(files.map(readImage)))
+        } catch (readError) {
+            formik.setFieldError('images', readError.message)
+            toast.error(readError.message, { position: 'bottom-right' })
+        }
     }
+
+    const showError = field => formik.touched[field] && formik.errors[field]
+
     return (
         <>
-            <MetaData title={'Update Product'} />
+            <MetaData title="Update Product" />
             <div className="row">
-                <div className="col-12 col-md-2">
-                    <Sidebar />
-                </div>
+                <div className="col-12 col-md-2"><Sidebar /></div>
                 <div className="col-12 col-md-10">
-                    <>
-                        <div className="wrapper my-5">
-                            <form className="shadow-lg" onSubmit={submitHandler}>
-                                <h1 className="mb-4">Update Product</h1>
-                                <div className="form-group">
-                                    <label htmlFor="name_field">Name</label>
-                                    <input
-                                        type="text"
-                                        id="name_field"
-                                        className="form-control"
-                                        required
-                                        minLength={2}
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label htmlFor="price_field">Price (PHP)</label>
-                                    <input
-                                        type="number"
-                                        id="price_field"
-                                        className="form-control"
-                                        min="0"
-                                        step="0.01"
-                                        required
-                                        value={price}
-                                        onChange={(e) => setPrice(e.target.value)}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label htmlFor="description_field">Description</label>
-                                    <textarea className="form-control" id="description_field" rows="8" minLength={10} value={description} onChange={(e) => setDescription(e.target.value)} required></textarea>
-                                </div>
-                                <div className="form-group">
-                                    <label htmlFor="category_field">Category</label>
-                                    <select className="form-control" id="category_field" value={category} onChange={(e) => setCategory(e.target.value)} required>
-                                        {PRODUCT_CATEGORIES.map(category => (
-                                            <option key={category} value={category} >{category}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label htmlFor="stock_field">Stock</label>
-                                    <input
-                                        type="number"
-                                        id="stock_field"
-                                        className="form-control"
-                                        min="0"
-                                        step="1"
-                                        required
-                                        value={stock}
-                                        onChange={(e) => setStock(e.target.value)}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label htmlFor="seller_field">Seller Name</label>
-                                    <input
-                                        type="text"
-                                        id="seller_field"
-                                        className="form-control"
-                                        required
-                                        value={seller}
-                                        onChange={(e) => setSeller(e.target.value)}
-                                    />
-                                </div>
-                                <div className='form-group'>
-                                    <label>Images</label>
-                                    <div className='custom-file'>
-                                        <input
-                                            type='file'
-                                            name='images'
-                                            className='custom-file-input'
-                                            id='customFile'
-                                            accept='image/jpeg,image/png,image/webp'
-                                            onChange={onChange}
-                                            multiple
-                                        />
-                                        <label className='custom-file-label' htmlFor='customFile'>
-                                            Replace with up to 10 images
-                                        </label>
-                                    </div>
-                                    {oldImages && oldImages.map(img => (
-                                        <img key={img} src={img.url} alt={img.url} className="mt-3 mr-2" width="55" height="52" />
-                                    ))}
-                                    {imagesPreview.map(img => (
-                                        <img src={img} key={img} alt="Images Preview" className="mt-3 mr-2" width="55" height="52" />
-                                    ))}
-                                </div>
-                                <button
-                                    id="login_button"
-                                    type="submit"
-                                    className="btn btn-block py-3"
-                                    disabled={loading ? true : false}
+                    <div className="wrapper my-5">
+                        <form className="shadow-lg" onSubmit={formik.handleSubmit} noValidate>
+                            <h1 className="mb-4">Update Product</h1>
+
+                            <div className="form-group">
+                                <label htmlFor="name_field">Name</label>
+                                <input
+                                    type="text"
+                                    id="name_field"
+                                    name="name"
+                                    className="form-control"
+                                    value={formik.values.name}
+                                    onChange={formik.handleChange}
+                                    onBlur={formik.handleBlur}
+                                    aria-invalid={Boolean(showError('name'))}
+                                    aria-describedby={showError('name') ? 'name_error' : undefined}
+                                />
+                                {showError('name') && <div className="field-error" id="name_error" role="alert">{formik.errors.name}</div>}
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="price_field">Price (PHP)</label>
+                                <input
+                                    type="number"
+                                    id="price_field"
+                                    name="price"
+                                    className="form-control"
+                                    min="0"
+                                    step="0.01"
+                                    value={formik.values.price}
+                                    onChange={formik.handleChange}
+                                    onBlur={formik.handleBlur}
+                                    aria-invalid={Boolean(showError('price'))}
+                                    aria-describedby={showError('price') ? 'price_error' : undefined}
+                                />
+                                {showError('price') && <div className="field-error" id="price_error" role="alert">{formik.errors.price}</div>}
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="description_field">Description</label>
+                                <textarea
+                                    id="description_field"
+                                    name="description"
+                                    className="form-control"
+                                    rows="8"
+                                    value={formik.values.description}
+                                    onChange={formik.handleChange}
+                                    onBlur={formik.handleBlur}
+                                    aria-invalid={Boolean(showError('description'))}
+                                    aria-describedby={showError('description') ? 'description_error' : undefined}
+                                />
+                                {showError('description') && <div className="field-error" id="description_error" role="alert">{formik.errors.description}</div>}
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="category_field">Category</label>
+                                <select
+                                    id="category_field"
+                                    name="category"
+                                    className="form-control"
+                                    value={formik.values.category}
+                                    onChange={formik.handleChange}
+                                    onBlur={formik.handleBlur}
+                                    aria-invalid={Boolean(showError('category'))}
+                                    aria-describedby={showError('category') ? 'category_error' : undefined}
                                 >
-                                    UPDATE
-                                </button>
-                            </form>
-                        </div>
-                    </>
+                                    <option value="">Select a collection</option>
+                                    {PRODUCT_CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                                </select>
+                                {showError('category') && <div className="field-error" id="category_error" role="alert">{formik.errors.category}</div>}
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="stock_field">Stock</label>
+                                <input
+                                    type="number"
+                                    id="stock_field"
+                                    name="stock"
+                                    className="form-control"
+                                    min="0"
+                                    step="1"
+                                    value={formik.values.stock}
+                                    onChange={formik.handleChange}
+                                    onBlur={formik.handleBlur}
+                                    aria-invalid={Boolean(showError('stock'))}
+                                    aria-describedby={showError('stock') ? 'stock_error' : undefined}
+                                />
+                                {showError('stock') && <div className="field-error" id="stock_error" role="alert">{formik.errors.stock}</div>}
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="seller_field">Seller Name</label>
+                                <input
+                                    type="text"
+                                    id="seller_field"
+                                    name="seller"
+                                    className="form-control"
+                                    value={formik.values.seller}
+                                    onChange={formik.handleChange}
+                                    onBlur={formik.handleBlur}
+                                    aria-invalid={Boolean(showError('seller'))}
+                                    aria-describedby={showError('seller') ? 'seller_error' : undefined}
+                                />
+                                {showError('seller') && <div className="field-error" id="seller_error" role="alert">{formik.errors.seller}</div>}
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="images_field">Images</label>
+                                <div className="custom-file">
+                                    <input
+                                        type="file"
+                                        id="images_field"
+                                        name="images"
+                                        className="custom-file-input"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        onChange={onImagesChange}
+                                        onBlur={() => formik.setFieldTouched('images', true)}
+                                        multiple
+                                        aria-invalid={Boolean(showError('images'))}
+                                        aria-describedby={showError('images') ? 'images_error' : undefined}
+                                    />
+                                    <label className="custom-file-label" htmlFor="images_field">
+                                        {formik.values.images.length ? 'Replace with up to 10 images' : 'Keep existing images or choose replacements'}
+                                    </label>
+                                </div>
+                                {formik.values.images.length
+                                    ? formik.values.images.map(image => (
+                                        <img src={image} key={image} alt="Product preview" className="mt-3 mr-2" width="55" height="52" />
+                                    ))
+                                    : oldImages.map(image => (
+                                        <img src={image.url} key={image.public_id} alt="Current product" className="mt-3 mr-2" width="55" height="52" />
+                                    ))}
+                                {showError('images') && <div className="field-error" id="images_error" role="alert">{formik.errors.images}</div>}
+                            </div>
+
+                            <button
+                                id="login_button"
+                                type="submit"
+                                className="btn btn-block py-3"
+                                disabled={!formik.isValid || formik.isSubmitting || loading || !product || product._id !== id}
+                            >
+                                {formik.isSubmitting || loading ? 'Updating…' : 'UPDATE'}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </>

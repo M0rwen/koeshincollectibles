@@ -1,18 +1,25 @@
-import React, { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 
 import Loader from '../Layout/Loader'
-// import { getUser } from '../../Utils/helpers'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
+import { loadUser } from '../../actions/userActions'
 
 const ProtectedRoute = ({ children, isAdmin = false }) => {
-    const { isAuthenticated, loading, user } = useSelector(state => state.auth);
-    // const [loading, setLoading] = useState(getUser() === false && false)
+    const { isAuthenticated, loading, user, sessionRestored, sessionError } = useSelector(state => state.auth)
+    const dispatch = useDispatch()
 
-    // const [user, setUser] = useState(getUser())
-
-    console.log(children.type.name, loading)
-
+    if (loading) return <Loader />
+    if (!sessionRestored && sessionError) {
+        return (
+            <div className="landing-load-error" role="alert">
+                <p>{sessionError}</p>
+                <button className="store-button store-button-dark" type="button" onClick={() => dispatch(loadUser())}>
+                    Retry
+                </button>
+            </div>
+        )
+    }
+    if (!sessionRestored) return <Loader />
     if (loading === false) {
         if (isAuthenticated === false) {
             return <Navigate to='/login' />
@@ -22,8 +29,7 @@ const ProtectedRoute = ({ children, isAdmin = false }) => {
         }
         return children
     }
-    return <Loader />;
-
+    return <Loader />
 };
 
 export default ProtectedRoute;
