@@ -1733,6 +1733,7 @@ html[data-theme='dark'] {
 }
 
 .collectible-info {
+  min-width: 0;
   padding: 13px 14px 14px;
 }
 
@@ -1752,6 +1753,7 @@ html[data-theme='dark'] {
 }
 
 .collectible-info h3 {
+  min-width: 0;
   min-height: 40px;
   margin: 7px 0 12px;
   color: var(--shop-ink);
@@ -1762,6 +1764,11 @@ html[data-theme='dark'] {
 }
 
 .collectible-info h3 a {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   text-decoration: none;
 }
 
@@ -2163,6 +2170,7 @@ html[data-theme='dark'] {
 }
 
 .landing-drop-copy {
+  min-width: 0;
   z-index: 1;
   align-self: center;
   padding: 48px clamp(28px, 5vw, 76px);
@@ -2203,7 +2211,10 @@ html[data-theme='dark'] {
 }
 
 .landing-drop-detail {
+  box-sizing: border-box;
   display: flex;
+  width: 100%;
+  min-width: 0;
   align-items: center;
   gap: 11px;
   max-width: 440px;
@@ -2214,12 +2225,20 @@ html[data-theme='dark'] {
 }
 
 .landing-drop-pin {
+  flex: 0 0 auto;
   font-size: 21px;
+}
+
+.landing-drop-detail-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .landing-drop-detail small,
 .landing-drop-detail strong {
   display: block;
+  min-width: 0;
 }
 
 .landing-drop-detail small {
@@ -2231,11 +2250,14 @@ html[data-theme='dark'] {
 }
 
 .landing-drop-detail strong {
+  display: -webkit-box;
   overflow: hidden;
+  overflow-wrap: anywhere;
   color: var(--shop-ink);
   font-size: 13px;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .landing-cta,
@@ -2267,6 +2289,7 @@ html[data-theme='dark'] {
 .landing-drop-display {
   position: relative;
   display: grid;
+  min-width: 0;
   min-height: 470px;
   place-items: center;
   overflow: hidden;
@@ -2397,12 +2420,13 @@ html[data-theme='dark'] {
 
 .hanging-signs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 21px;
   padding: 0 12px;
 }
 
 .hanging-sign {
+  grid-column: span 2;
   position: relative;
   display: flex;
   min-height: 112px;
@@ -2450,6 +2474,16 @@ html[data-theme='dark'] {
 
 .hanging-sign-3 {
   transform: rotate(-0.5deg);
+}
+
+.hanging-sign-4 {
+  grid-column: 2 / span 2;
+  transform: translateY(7px) rotate(0.8deg);
+}
+
+.hanging-sign-5 {
+  grid-column: 4 / span 2;
+  transform: rotate(-1deg);
 }
 
 .hanging-sign:hover {
@@ -2541,11 +2575,14 @@ html[data-theme='dark'] {
 }
 
 .landing-featured-copy {
+  min-width: 0;
   align-self: center;
   padding: 36px clamp(24px, 4vw, 52px);
 }
 
 .landing-featured-copy > p:not(.store-kicker) {
+  min-width: 0;
+  overflow-wrap: anywhere;
   max-width: 390px;
   margin: 14px 0 20px;
   color: var(--shop-muted);
@@ -2554,6 +2591,8 @@ html[data-theme='dark'] {
 }
 
 .landing-featured-link {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   min-height: 41px;
 }
 
@@ -2908,7 +2947,10 @@ html[data-theme='dark'] .Toastify__close-button {
   .hanging-sign,
   .hanging-sign-1,
   .hanging-sign-2,
-  .hanging-sign-3 {
+  .hanging-sign-3,
+  .hanging-sign-4,
+  .hanging-sign-5 {
+    grid-column: 1;
     min-height: 74px;
     padding: 13px 16px;
     transform: none;

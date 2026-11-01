@@ -176,7 +176,7 @@ const Home = () => {
                             <p className="landing-intro">A little shop of pocket-sized legends, curious keepsakes, and things worth keeping.</p>
                             <div className="landing-drop-detail">
                                 <span className="landing-drop-pin" aria-hidden="true">✦</span>
-                                <span>
+                                <span className="landing-drop-detail-copy">
                                     <small>{newestFind ? 'JUST ADDED TO THE SHELF' : 'THE KOESHIN COLLECTION'}</small>
                                     <strong>{newestFind?.name || 'A cabinet of curiosities'}</strong>
                                 </span>

@@ -1,5 +1,7 @@
 export const PRODUCT_CATEGORIES = [
-    'Action Figures',
-    'Trading Cards',
-    'Die-cast Models'
+    'Marvel Figurines',
+    'Magic: The Gathering Cards',
+    'Gundam',
+    'Marvel Comics',
+    'Hot Wheels'
 ]
