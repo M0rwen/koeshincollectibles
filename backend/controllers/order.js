@@ -1,6 +1,7 @@
 ﻿const Order = require('../models/order');
 const Product = require('../models/product');
 const sendEmail = require('../utils/sendEmail');
+const createOrderReceiptPdf = require('../utils/orderReceipt');
 const User = require('../models/user');
 
 const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
@@ -34,32 +35,50 @@ exports.newOrder = async (req, res, next) => {
         totalPrice,
         paymentInfo,
         paymentMethod,
-        paidAt: paymentInfo?.status === 'succeeded' ? Date.now() : undefined,
+        paidAt: !['Cash on Delivery', 'Card (demo only)'].includes(paymentMethod)
+            && paymentInfo?.status === 'succeeded' ? Date.now() : undefined,
         user: req.user._id
     })
     order.orderReference = `KC-${order._id.toString().toUpperCase()}`
     await order.save()
 
+    const customer = { name: req.user.name, email: req.user.email }
     const paymentNote = paymentMethod === 'Cash on Delivery'
-        ? 'Payment is due on delivery.'
-        : 'This demo order did not process a card payment.'
+        ? 'Payment is pending and due on delivery.'
+        : 'Payment is pending; this demo order did not process a card payment.'
     const emailItems = order.orderItems.map(item => (
         `${escapeHtml(item.name)} (Qty ${item.quantity}) — PHP ${Number(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
     )).join('<br>')
+    let receipt
+
+    try {
+        receipt = await createOrderReceiptPdf({
+            ...order.toObject(),
+            customer
+        })
+    } catch (receiptError) {
+        console.error('Order receipt PDF generation failed:', receiptError)
+    }
 
     try {
         await sendEmail({
             email: req.user.email,
-            subject: `Koeshin Collectibles — Order ${order.orderReference} confirmed`,
+            subject: `Koeshin's Collectibles — Order ${order.orderReference} confirmed`,
             message: `
                 <strong>Order confirmed</strong><br>
                 Hi ${escapeHtml(req.user.name)},<br><br>
                 Thank you for your order ${escapeHtml(order.orderReference)}.<br><br>
                 ${emailItems}<br><br>
                 Total: PHP ${Number(order.totalPrice).toLocaleString('en-PH', { minimumFractionDigits: 2 })}<br>
+                Payment status: Pending.<br>
                 ${paymentNote}<br><br>
-                You can view your order in your Koeshin Collectibles account.
-            `
+                You can view your order in your Koeshin's Collectibles account.
+            `,
+            attachments: receipt ? [{
+                filename: receipt.filename,
+                content: receipt.buffer,
+                contentType: 'application/pdf'
+            }] : undefined
         })
     } catch (emailError) {
         console.error('Order confirmation email failed:', emailError)
@@ -67,7 +86,11 @@ exports.newOrder = async (req, res, next) => {
 
     res.status(200).json({
         success: true,
-        order
+        order: {
+            ...order.toObject(),
+            customer,
+            receiptPdf: receipt?.buffer.toString('base64')
+        }
     })
 }
 
