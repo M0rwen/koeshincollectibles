@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Almendra:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 :root {
   font-family: 'DM Sans', sans-serif;
-  color: #202922;
-  background: #f7f7f2;
+  color: var(--shop-ink);
+  background: var(--shop-paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -23,7 +23,9 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: #f7f7f2;
+  color: var(--shop-ink);
+  background: var(--shop-paper);
+  transition: color 180ms ease, background-color 180ms ease;
 }
 
 button,
@@ -31,6 +33,15 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--shop-display);
 }
 
 img {

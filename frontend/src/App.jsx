@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
@@ -47,7 +47,29 @@ const ScrollToTop = () => {
   return null
 }
 
+const CatalogPage = () => {
+  const { pathname } = useLocation()
+  return <Home key={pathname} />
+}
+
 function App() {
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = window.localStorage.getItem('koeshin-theme')
+    const initialTheme = savedTheme === 'light' || savedTheme === 'dark'
+      ? savedTheme
+      : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    document.documentElement.dataset.theme = initialTheme
+    return initialTheme
+  })
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem('koeshin-theme', theme)
+    document.querySelector('meta[name="theme-color"]')?.setAttribute(
+      'content',
+      theme === 'dark' ? '#1b1621' : '#fbf8f3'
+    )
+  }, [theme])
 
   // const [state, setState] = useState({
   //   cartItems: localStorage.getItem('cartItems')
@@ -127,12 +149,18 @@ function App() {
       <Router>
         <ScrollToTop />
         {/* <Header cartItems={state.cartItems} /> */}
-        <Header />
+        <Header
+          theme={theme}
+          onToggleTheme={() => setTheme(currentTheme => currentTheme === 'light' ? 'dark' : 'light')}
+        />
         <Routes>
-          <Route path="/" element={<Home />} exact="true" />
+          <Route path="/" element={<CatalogPage />} exact="true" />
+          <Route path="/shop" element={<CatalogPage />} />
+          <Route path="/collections" element={<CatalogPage />} />
+          <Route path="/collections/:category" element={<CatalogPage />} />
           {/* <Route path="/product/:id" element={<ProductDetails cartItems={state.cartItems} addItemToCart={addItemToCart} />} exact="true" /> */}
           <Route path="/product/:id" element={<ProductDetails />} exact="true" />
-          <Route path="/search/:keyword" element={<Home />} exact="true" />
+          <Route path="/search/:keyword" element={<CatalogPage />} exact="true" />
           <Route path="/login" element={<Login />} exact="true" />
           <Route path="/register" element={<Register exact="true" />} />
           <Route path="/password/forgot" element={<ForgotPassword />} exact="true" />

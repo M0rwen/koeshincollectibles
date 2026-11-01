@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import MetaData from './Layout/MetaData'
 import Product from './Product/Product'
 import Loader from './Layout/Loader'
@@ -10,13 +10,37 @@ import { useDispatch, useSelector } from 'react-redux'
 import { getProducts } from '../actions/productActions'
 import { PRODUCT_CATEGORIES } from '../constants/productCategories'
 import { formatCurrency } from '../Utils/helpers'
+
+const ProductShelf = ({ eyebrow, title, products, link, linkLabel }) => (
+    <section className="landing-shelf" aria-labelledby={`shelf-${title.toLowerCase().replaceAll(' ', '-')}`}>
+        <div className="landing-section-heading">
+            <div>
+                <p className="store-kicker">{eyebrow}</p>
+                <h2 id={`shelf-${title.toLowerCase().replaceAll(' ', '-')}`}>{title}</h2>
+            </div>
+            {link && <Link className="landing-text-link" to={link}>{linkLabel} <span aria-hidden="true">→</span></Link>}
+        </div>
+        {products.length ? (
+            <div className="landing-product-row">
+                {products.map(product => <Product key={product._id} product={product} />)}
+            </div>
+        ) : (
+            <p className="landing-empty">The cabinet is being arranged. Check back soon for new finds.</p>
+        )}
+    </section>
+)
+
 const Home = () => {
+    const { keyword, category: categoryParam } = useParams()
+    const { pathname } = useLocation()
     const { loading, products, error, productsCount, filteredProductsCount } = useSelector(state => state.products)
     const [price, setPrice] = useState(['', ''])
-    const [category, setCategory] = useState('')
+    const [category, setCategory] = useState(() => (
+        PRODUCT_CATEGORIES.includes(categoryParam) ? categoryParam : ''
+    ))
     const [rating, setRating] = useState('')
     const [currentPage, setCurrentPage] = useState(1)
-    const { keyword } = useParams()
+    const [catalogRetry, setCatalogRetry] = useState(0)
     const dispatch = useDispatch()
     const sentinelRef = useRef(null)
     const count = filteredProductsCount ?? productsCount ?? 0
@@ -28,15 +52,85 @@ const Home = () => {
         ? [minimumPrice, maximumPrice]
         : [maximumPrice, minimumPrice]
     const priceRangeInvalid = Boolean(price[0] && price[1] && Number(price[0]) > Number(price[1]))
+    const isHomePage = pathname === '/'
+    const isShopPage = pathname === '/shop'
+    const isCollectionsPage = pathname === '/collections'
+    const isCategoryPage = pathname.startsWith('/collections/')
+    const productsByCategory = PRODUCT_CATEGORIES
+        .map(name => ({
+            name,
+            products: products.filter(product => product.category === name)
+        }))
+        .filter(collection => collection.products.length > 0)
+    const newestProducts = useMemo(() => [...products].sort((first, second) => (
+        new Date(second.createdAt || 0).getTime() - new Date(first.createdAt || 0).getTime()
+    )), [products])
+    const fanFavorites = useMemo(() => {
+        const topRated = [...newestProducts]
+            .filter(product => Number(product.ratings) > 0)
+            .sort((first, second) => (
+                Number(second.ratings) - Number(first.ratings)
+                || Number(second.numOfReviews || 0) - Number(first.numOfReviews || 0)
+            ))
+            .slice(0, 4)
+        const favoriteIds = new Set(topRated.map(product => String(product._id)))
+        return [
+            ...topRated,
+            ...newestProducts
+                .filter(product => !favoriteIds.has(String(product._id)))
+                .slice(0, Math.max(0, 4 - topRated.length))
+        ]
+    }, [newestProducts])
+    const featuredCategory = newestProducts[0]?.category || PRODUCT_CATEGORIES[0]
+    const featuredProducts = newestProducts
+        .filter(product => product.category === featuredCategory)
+        .slice(0, 4)
+    const newestFind = newestProducts[0]
 
     useEffect(() => {
-        if (priceRangeInvalid) return
+        if (isCollectionsPage || priceRangeInvalid) return
+        if (isHomePage) {
+            let cancelled = false
+            const loadHomeCatalog = async () => {
+                let page = 1
+                let result
+                do {
+                    result = await dispatch(getProducts(page, keyword, price, category, rating))
+                    if (cancelled || !result) return
+                    page += 1
+                } while (result.resPerPage > 0 && page <= Math.ceil(result.filteredProductsCount / result.resPerPage))
+            }
+            void loadHomeCatalog()
+            return () => {
+                cancelled = true
+            }
+        }
         dispatch(getProducts(currentPage, keyword, price, category, rating))
-    }, [currentPage, keyword, price, category, rating, priceRangeInvalid, dispatch])
+    }, [currentPage, keyword, price, category, rating, priceRangeInvalid, isCollectionsPage, isHomePage, catalogRetry, dispatch])
+
+    useEffect(() => {
+        if (!isCollectionsPage || priceRangeInvalid) return
+
+        let cancelled = false
+        const loadCatalog = async () => {
+            let page = 1
+            let result
+            do {
+                result = await dispatch(getProducts(page, keyword, price, category, rating))
+                if (cancelled || !result) return
+                page += 1
+            } while (result.resPerPage > 0 && page <= Math.ceil(result.filteredProductsCount / result.resPerPage))
+        }
+
+        void loadCatalog()
+        return () => {
+            cancelled = true
+        }
+    }, [catalogRetry, category, dispatch, isCollectionsPage, keyword, price, priceRangeInvalid, rating])
 
     useEffect(() => {
         const sentinel = sentinelRef.current
-        if (!sentinel || loading || error || !hasMore) return
+        if (isCollectionsPage || isHomePage || !sentinel || loading || error || !hasMore) return
 
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting) {
@@ -46,7 +140,7 @@ const Home = () => {
 
         observer.observe(sentinel)
         return () => observer.disconnect()
-    }, [error, hasMore, loading])
+    }, [error, hasMore, isCollectionsPage, isHomePage, loading])
 
     const updateCategory = (value) => {
         setCategory(value)
@@ -60,58 +154,162 @@ const Home = () => {
         setCurrentPage(1)
     }
 
+    const retryProducts = () => {
+        if (isCollectionsPage || isHomePage) {
+            setCatalogRetry(retry => retry + 1)
+            return
+        }
+        dispatch(getProducts(currentPage, keyword, price, category, rating))
+    }
+
     const hasFilters = Boolean(keyword || category || rating || price[0] || price[1])
+
+    if (isHomePage) {
+        return (
+            <>
+                <MetaData title="Curious finds, carefully kept" />
+                <main className="store-home store-landing">
+                    <section className="landing-drop" aria-labelledby="store-hero-title">
+                        <div className="landing-drop-copy">
+                            <p className="landing-overline"><span aria-hidden="true">✦</span> A FRESH FIND IN THE CABINET</p>
+                            <h1 id="store-hero-title">Good things<br />keep finding us.</h1>
+                            <p className="landing-intro">A little shop of pocket-sized legends, curious keepsakes, and things worth keeping.</p>
+                            <div className="landing-drop-detail">
+                                <span className="landing-drop-pin" aria-hidden="true">✦</span>
+                                <span>
+                                    <small>{newestFind ? 'JUST ADDED TO THE SHELF' : 'THE KOESHIN COLLECTION'}</small>
+                                    <strong>{newestFind?.name || 'A cabinet of curiosities'}</strong>
+                                </span>
+                            </div>
+                            <Link className="landing-cta" to={newestFind ? `/product/${newestFind._id}` : '/shop'}>
+                                {newestFind ? 'Meet the newest find' : 'Explore the shop'} <span aria-hidden="true">→</span>
+                            </Link>
+                        </div>
+                        <div className="landing-drop-display">
+                            <span className="landing-display-note">FOUND WITH<br />A LITTLE MAGIC</span>
+                            <div className="landing-display-shelf" aria-hidden="true" />
+                            <Link
+                                className="landing-drop-object"
+                                to={newestFind ? `/product/${newestFind._id}` : '/shop'}
+                                aria-label={newestFind ? `View ${newestFind.name}` : 'Explore the shop'}
+                            >
+                                <img
+                                    src={newestFind?.images?.[0]?.url || '/images/catalog/tin-silver-jet.jpg'}
+                                    alt={newestFind?.name || 'A colorful vintage tin toy racer'}
+                                />
+                            </Link>
+                            <span className="landing-drop-badge">THE LATEST<br />LITTLE LEGEND</span>
+                        </div>
+                        <span className="landing-spark landing-spark-one" aria-hidden="true">✦</span>
+                        <span className="landing-spark landing-spark-two" aria-hidden="true">✧</span>
+                    </section>
+
+                    <section className="landing-categories" aria-labelledby="landing-categories-title">
+                        <div className="landing-section-heading">
+                            <div>
+                                <p className="store-kicker">PICK A PATH</p>
+                                <h2 id="landing-categories-title">Choose your cabinet</h2>
+                            </div>
+                            <span className="landing-aside-note">Every shelf has a story.</span>
+                        </div>
+                        <nav className="hanging-signs" aria-label="Browse product categories">
+                            {PRODUCT_CATEGORIES.map((item, index) => (
+                                <Link
+                                    className={`hanging-sign hanging-sign-${index + 1}`}
+                                    key={item}
+                                    to={`/collections/${encodeURIComponent(item)}`}
+                                >
+                                    <span className="hanging-sign-number">0{index + 1}</span>
+                                    <span className="hanging-sign-label">{item}</span>
+                                    <span className="hanging-sign-arrow" aria-hidden="true">↗</span>
+                                </Link>
+                            ))}
+                        </nav>
+                    </section>
+
+                    <ProductShelf eyebrow="JUST UNBOXED" title="New arrivals" products={newestProducts.slice(0, 4)} link="/shop" linkLabel="See every find" />
+                    <ProductShelf eyebrow="THE ONES YOU LOVE" title="Fan favorites" products={fanFavorites} link="/shop" linkLabel="Browse the shop" />
+
+                    <section className="landing-featured" aria-labelledby="featured-collection-title">
+                        <div className="landing-featured-copy">
+                            <p className="store-kicker">A LITTLE WORLD OF ITS OWN</p>
+                            <h2 id="featured-collection-title">Featured collection</h2>
+                            <p>Step into {featuredCategory.toLowerCase()}—a hand-picked corner of the cabinet, full of pieces with stories still to tell.</p>
+                            <Link className="landing-featured-link" to={`/collections/${encodeURIComponent(featuredCategory)}`}>
+                                Explore {featuredCategory} <span aria-hidden="true">→</span>
+                            </Link>
+                        </div>
+                        <div className="landing-featured-display">
+                            {featuredProducts.slice(0, 3).map((product, index) => (
+                                <Link
+                                    className={`featured-object featured-object-${index + 1}`}
+                                    key={product._id}
+                                    to={`/product/${product._id}`}
+                                    aria-label={`View ${product.name}`}
+                                >
+                                    <img src={product.images?.[0]?.url || '/images/logo.png'} alt="" />
+                                </Link>
+                            ))}
+                            {!featuredProducts.length && <span className="featured-placeholder" aria-hidden="true">✦</span>}
+                            <span className="featured-collection-stamp" aria-hidden="true">THE<br />GOOD<br />FINDS</span>
+                        </div>
+                    </section>
+
+                    {error && products.length > 0 && (
+                        <p className="landing-load-note" role="status">Some finds couldn’t be loaded. <button type="button" onClick={retryProducts}>Try again</button></p>
+                    )}
+                    {error && products.length === 0 && !loading && (
+                        <div className="landing-load-error" role="alert">
+                            <p>We couldn’t open the cabinet just now.</p>
+                            <button className="landing-cta" type="button" onClick={retryProducts}>Try again</button>
+                        </div>
+                    )}
+                </main>
+            </>
+        )
+    }
 
     return (
         <>
-            <MetaData title="Curious finds, carefully kept" />
+            <MetaData title={isCollectionsPage ? 'Collections' : category || (isShopPage ? 'Shop all products' : 'Curious finds, carefully kept')} />
             <main className="store-home">
-                <section className="store-hero" aria-labelledby="store-hero-title">
-                    <div className="store-hero-copy">
-                        <p className="store-kicker">THE KOESHIN COLLECTION | THE COLLECTOR'S CABINET</p>
-                        <h1 id="store-hero-title">Good things<br />keep finding us.</h1>
-                        <p className="store-hero-text">Trading cards, Hot Wheels-scale racers, old-school toys and the odd thing you didn't know you were looking for.</p>
-                        <a className="store-button store-button-light" href="#shop">Explore the finds <span aria-hidden="true">&gt;</span></a>
-                        <p className="store-hero-note">A little nostalgia. A lot of character.</p>
-                    </div>
-                    <div className="store-hero-art">
-                        <img src="/images/catalog/tin-silver-jet.jpg" alt="Colorful vintage tin toy racer" />
-                        <span className="store-art-label">SMALL OBJECTS<br />BIG STORIES</span>
-                    </div>
-                </section>
-
-                <section className="collection-shortcuts" id="collections" aria-labelledby="collections-title">
+                {(isCollectionsPage || isCategoryPage) && <section className="collection-shortcuts" id="collections" aria-labelledby="collections-title">
                     <div className="section-heading collection-heading">
                         <div>
-                            <p className="store-kicker">FOLLOW YOUR CURIOSITY</p>
-                            <h2 id="collections-title">Browse the cabinets</h2>
+                            <p className="store-kicker">FIND YOUR NEXT FAVORITE</p>
+                            <h2 id="collections-title">{isCollectionsPage ? 'Collections' : 'Browse collections'}</h2>
+                            {isCollectionsPage && <p className="collection-description">Explore collectibles for every kind of collector.</p>}
                         </div>
-                        <span className="collection-side-note">Six little worlds to get lost in</span>
                     </div>
-                    <div className="collection-list">
-                        {PRODUCT_CATEGORIES.map((item, index) => (
-                            <button
-                                className={`collection-link${category === item ? ' is-selected' : ''}`}
-                                key={item}
-                                type="button"
-                                onClick={() => {
-                                    updateCategory(category === item ? '' : item)
-                                    document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' })
-                                }}
+                    <nav className="collection-selector" aria-label="Choose a collection">
+                            <Link
+                                className={`collection-chip${isCollectionsPage ? ' is-selected' : ''}`}
+                                to="/collections"
+                                aria-current={isCollectionsPage ? 'page' : undefined}
                             >
-                                <span className="collection-number">0{index + 1}</span>
-                                <span>{item}</span>
-                                <span className="collection-arrow" aria-hidden="true">&gt;</span>
-                            </button>
-                        ))}
-                    </div>
-                </section>
+                                All collections
+                            </Link>
+                            {PRODUCT_CATEGORIES.map(item => {
+                                const isSelected = isCategoryPage && categoryParam === item
+                                return (
+                                    <Link
+                                        className={`collection-chip${isSelected ? ' is-selected' : ''}`}
+                                        key={item}
+                                        to={`/collections/${encodeURIComponent(item)}`}
+                                        aria-current={isSelected ? 'page' : undefined}
+                                    >
+                                        {item}
+                                    </Link>
+                                )
+                            })}
+                    </nav>
+                </section>}
 
                 <section className="shop-section" id="shop" aria-labelledby="shop-title">
                     <div className="shop-title-row">
                         <div>
                             <p className="store-kicker">THE GOOD STUFF</p>
-                            <h2 id="shop-title">{keyword ? `Finds for "${keyword}"` : 'Shop the collection'}</h2>
+                            <h2 id="shop-title">{keyword ? `Finds for "${keyword}"` : isCollectionsPage ? 'All collections' : category || (isShopPage ? 'Shop all products' : isCategoryPage ? categoryParam : 'Shop the collection')}</h2>
                         </div>
                         <div className="shop-count-wrap">
                             <p className="shop-count">{count} {count === 1 ? 'find' : 'finds'} in the cabinet</p>
@@ -200,8 +398,24 @@ const Home = () => {
                         </aside>
 
                         <div className="shop-results">
-                            {loading && currentPage === 1 ? <Loader /> : error && currentPage === 1 ? (
-                                <div className="shop-empty"><h3>We couldn't open the cabinet.</h3><p>{error}</p><button className="store-button store-button-dark" type="button" onClick={() => dispatch(getProducts(currentPage, keyword, price, category, rating))}>Try again</button></div>
+                            {loading && currentPage === 1 && products.length === 0 ? <Loader /> : error && currentPage === 1 && products.length === 0 ? (
+                                <div className="shop-empty"><h3>We couldn't open the cabinet.</h3><p>{error}</p><button className="store-button store-button-dark" type="button" onClick={retryProducts}>Try again</button></div>
+                            ) : products.length > 0 && isCollectionsPage ? (
+                                <div className="collection-products">
+                                    {productsByCategory.map(collection => (
+                                        <section className="collection-product-section" key={collection.name}>
+                                            <div className="collection-product-heading">
+                                                <h3>
+                                                    <Link to={`/collections/${encodeURIComponent(collection.name)}`}>{collection.name}</Link>
+                                                </h3>
+                                                <span>{collection.products.length} {collection.products.length === 1 ? 'product' : 'products'}</span>
+                                            </div>
+                                            <div className="product-grid">
+                                                {collection.products.map(product => <Product key={product._id} product={product} />)}
+                                            </div>
+                                        </section>
+                                    ))}
+                                </div>
                             ) : products?.length ? (
                                 <div className="product-grid">
                                     {products.map(product => <Product key={product._id} product={product} />)}
@@ -209,9 +423,15 @@ const Home = () => {
                             ) : (
                                 <div className="shop-empty">
                                     <span className="empty-mark" aria-hidden="true">*</span>
-                                    <h3>No finds in this corner yet.</h3>
-                                    <p>Try another collection or loosen the filters.</p>
+                                    <h3>No products found</h3>
+                                    <p>Try another collection or loosen the filters to see more finds.</p>
                                     <button className="store-button store-button-dark" type="button" onClick={clearFilters}>Show everything</button>
+                                </div>
+                            )}
+                            {error && products.length > 0 && isCollectionsPage && (
+                                <div className="infinite-error" role="alert">
+                                    <span>Some products couldn't load: {error}</span>
+                                    <button type="button" onClick={retryProducts}>Retry</button>
                                 </div>
                             )}
                             {error && currentPage > 1 && (
@@ -221,7 +441,7 @@ const Home = () => {
                                 </div>
                             )}
                             {loading && currentPage > 1 && <div className="infinite-loading" role="status"><span className="loading-mark" />Loading more finds...</div>}
-                            {!loading && !error && hasMore && <div ref={sentinelRef} className="infinite-sentinel" aria-hidden="true" />}
+                            {!isCollectionsPage && !loading && !error && hasMore && <div ref={sentinelRef} className="infinite-sentinel" aria-hidden="true" />}
                             {!loading && !hasMore && products.length > 0 && <p className="collection-end">You've reached the end of this collection.</p>}
                         </div>
                     </div>

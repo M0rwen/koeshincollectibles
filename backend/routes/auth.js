@@ -15,12 +15,14 @@ const {
     getUserDetails,
     updateUser,
     logout,
+    firebaseLogin,
 } = require('../controllers/auth');
 const { isAuthenticatedUser, authorizeRoles } = require('../middlewares/auth')
 
 
 router.post('/register', upload.single("avatar"), registerUser);
 router.post('/login', loginUser);
+router.post('/auth/firebase', firebaseLogin);   // Google login endpoint
 router.post('/password/forgot', forgotPassword);
 router.put('/password/reset/:token', resetPassword);
 router.get('/me', isAuthenticatedUser, getUserProfile)

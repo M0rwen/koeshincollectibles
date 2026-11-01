@@ -1,8 +1,5 @@
 export const PRODUCT_CATEGORIES = [
+    'Action Figures',
     'Trading Cards',
-    'Die-Cast Cars',
-    'Vintage Toys',
-    'Collectible Figures',
-    'Vintage Cameras',
-    'Tabletop Games'
+    'Die-cast Models'
 ]

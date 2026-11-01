@@ -57,6 +57,7 @@ export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], cat
             payload: data,
             meta: { append: currentPage > 1, queryKey }
         })
+        return data
 
     } catch (error) {
         dispatch({
