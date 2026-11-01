@@ -7,7 +7,7 @@ const Product = ({ product }) => {
         <article className="collectible-card">
             <Link className="collectible-image" to={`/product/${product._id}`} aria-label={`View ${product.name}`}>
                 <span className="collectible-category">{product.category}</span>
-                <img src={image?.url || '/images/shopit_logo.png'} alt={product.name} loading="lazy" />
+                <img src={image?.url || '/images/logo.png'} alt={product.name} loading="lazy" />
             </Link>
             <div className="collectible-info">
                 <div className="collectible-rating" aria-label={`${product.ratings || 0} out of 5 stars`}>
