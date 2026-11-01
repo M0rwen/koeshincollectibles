@@ -5,9 +5,9 @@ const sendEmail = require('../utils/sendEmail')
 const sendToken = require('../utils/jwtToken');
 const admin = require('../config/firebaseAdmin');
 
-// ─── Google / Firebase login ──────────────────────────────────────────────────
+// ─── Firebase social login ────────────────────────────────────────────────────
 // POST /api/v1/auth/firebase
-// Body: { idToken }  (the Firebase ID token from the frontend popup)
+// Body: { idToken } from a configured Firebase identity provider.
 exports.firebaseLogin = async (req, res) => {
     const { idToken } = req.body;
     if (!idToken) {
@@ -19,10 +19,13 @@ exports.firebaseLogin = async (req, res) => {
         // Verify the token with Firebase Admin — throws if fake or expired
         decoded = await admin.auth().verifyIdToken(idToken);
     } catch {
-        return res.status(401).json({ message: 'Invalid or expired Google token. Please try again.' });
+        return res.status(401).json({ message: 'Invalid or expired social sign-in token. Please try again.' });
     }
 
     const { uid, email, name, picture } = decoded;
+    if (!email) {
+        return res.status(400).json({ message: 'Your social account must provide an email address.' })
+    }
 
     // Try to find an existing user with this email
     let user = await User.findOne({ email });
@@ -61,45 +64,49 @@ exports.firebaseLogin = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 exports.registerUser = async (req, res, next) => {
-    console.log(req.body)
-
     const { name, username, email, contactNumber, password } = req.body;
 
     if (!name || !username || !email || !contactNumber || !password) {
         return res.status(400).json({ message: 'Please provide name, username, email, contact number and password.' })
     }
 
-    const result = await cloudinary.v2.uploader.upload(req.body.avatar, {
-        folder: 'avatars',
-        width: 150,
-        crop: "scale"
-    }, (err, res) => {
-        console.log(err, res);
-    });
-    const user = await User.create({
-        name,
-        username,
-        email,
-        contactNumber,
-        password,
-        avatar: {
-            public_id: result.public_id,
-            url: result.secure_url
-        },
-    })
-    //test token
-    const token = user.getJwtToken();
+    let uploadedAvatar
+    try {
+        if (req.body.avatar) {
+            uploadedAvatar = await cloudinary.v2.uploader.upload(req.body.avatar, {
+                folder: 'avatars',
+                width: 150,
+                crop: 'scale'
+            })
+        }
 
-    return res.status(201).json({
-        success: true,
-        user,
-        token
-    })
-    // sendToken(user, 200, res)
+        const user = await User.create({
+            name,
+            username,
+            email,
+            contactNumber,
+            password,
+            avatar: uploadedAvatar
+                ? { public_id: uploadedAvatar.public_id, url: uploadedAvatar.secure_url }
+                : { public_id: 'default-avatar', url: '/images/default_avatar.jpg' }
+        })
+
+        return sendToken(user, 201, res)
+    } catch (error) {
+        if (uploadedAvatar?.public_id) {
+            await cloudinary.v2.uploader.destroy(uploadedAvatar.public_id).catch(cleanupError => {
+                console.error('Registration avatar cleanup failed:', cleanupError)
+            })
+        }
+
+        const isDuplicate = error.code === 11000
+        return res.status(isDuplicate ? 409 : 400).json({
+            message: isDuplicate ? 'Username or email is already in use.' : error.message
+        })
+    }
 }
 
 exports.loginUser = async (req, res, next) => {
-    console.log(req.body)
     const { identifier, password } = req.body;
 
     if (!identifier || !password) {
@@ -167,15 +174,12 @@ exports.forgotPassword = async (req, res, next) => {
 }
 
 exports.resetPassword = async (req, res, next) => {
-    console.log(req.params.token)
     // Hash URL token
     const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex')
     const user = await User.findOne({
         resetPasswordToken,
         resetPasswordExpire: { $gt: Date.now() }
     })
-    console.log(user)
-
     if (!user) {
         return res.status(400).json({ message: 'Password reset token is invalid or has been expired' })
 
@@ -201,8 +205,7 @@ exports.resetPassword = async (req, res, next) => {
 }
 
 exports.getUserProfile = async (req, res, next) => {
-    const user = await User.findById(req.user.id);
-    console.log(user)
+    const user = await User.findById(req.user.id)
 
     return res.status(200).json({
         success: true,
@@ -220,31 +223,52 @@ exports.updateProfile = async (req, res, next) => {
     }
 
     // Update avatar
-    if (req.body.avatar !== '') {
-        let user = await User.findById(req.user.id)
-        const image_id = user.avatar?.public_id;
-        // Only destroy if it's a real Cloudinary image, not a Google photo
-        if (image_id && !image_id.startsWith('google:')) {
-            await cloudinary.v2.uploader.destroy(image_id);
+    let uploadedAvatar
+    const currentUser = req.user
+    if (req.body.avatar) {
+        try {
+            uploadedAvatar = await cloudinary.v2.uploader.upload(req.body.avatar, {
+                folder: 'avatars',
+                width: 150,
+                crop: 'scale'
+            })
+        } catch (error) {
+            return res.status(502).json({ message: `Avatar upload failed: ${error.message}` })
         }
-        // console.log("Res", res)
-        const result = await cloudinary.v2.uploader.upload(req.body.avatar, {
-            folder: 'avatars',
-            width: 150,
-            crop: "scale"
-        })
-
         newUserData.avatar = {
-            public_id: result.public_id,
-            url: result.secure_url
+            public_id: uploadedAvatar.public_id,
+            url: uploadedAvatar.secure_url
         }
     }
-    const user = await User.findByIdAndUpdate(req.user.id, newUserData, {
-        new: true,
-        runValidators: true,
-    })
+
+    let user
+    try {
+        user = await User.findByIdAndUpdate(req.user.id, newUserData, {
+            new: true,
+            runValidators: true,
+        })
+    } catch (error) {
+        if (uploadedAvatar?.public_id) {
+            await cloudinary.v2.uploader.destroy(uploadedAvatar.public_id).catch(cleanupError => {
+                console.error('Profile avatar cleanup failed:', cleanupError)
+            })
+        }
+        return res.status(400).json({ message: error.message })
+    }
     if (!user) {
+        if (uploadedAvatar?.public_id) {
+            await cloudinary.v2.uploader.destroy(uploadedAvatar.public_id).catch(cleanupError => {
+                console.error('Profile avatar cleanup failed:', cleanupError)
+            })
+        }
         return res.status(401).json({ message: 'User Not Updated' })
+    }
+
+    const oldAvatarId = currentUser.avatar?.public_id
+    if (uploadedAvatar?.public_id && oldAvatarId?.startsWith('avatars/')) {
+        await cloudinary.v2.uploader.destroy(oldAvatarId).catch(error => {
+            console.error('Previous profile avatar cleanup failed:', error)
+        })
     }
 
     return res.status(200).json({
@@ -254,7 +278,6 @@ exports.updateProfile = async (req, res, next) => {
 }
 
 exports.updatePassword = async (req, res, next) => {
-    console.log(req.body.password)
     const user = await User.findById(req.user.id).select('+password');
     // Check previous user password
     const isMatched = await user.comparePassword(req.body.oldPassword)

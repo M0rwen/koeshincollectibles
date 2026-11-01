@@ -38,7 +38,11 @@ let initialState = {
             : {}
     },
     user: {},
-    auth: {},
+    auth: {
+        user: null,
+        loading: true,
+        isAuthenticated: false
+    },
 
 }
 

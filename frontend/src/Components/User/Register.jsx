@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
-import axios from 'axios'
 import { toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useDispatch, useSelector } from 'react-redux'
-import { loginWithGoogle } from '../../actions/userActions'
-
-// Firebase popup helpers
+import { clearErrors, loginWithFirebase, register as registerUser } from '../../actions/userActions'
 import { signInWithPopup } from 'firebase/auth'
-import { auth, googleProvider } from '../../firebase'
+import { auth, facebookProvider, googleProvider } from '../../firebase'
 
 const Register = () => {
 
@@ -30,12 +27,16 @@ const Register = () => {
     const [loading, setLoading] = useState(false)
 
     const dispatch = useDispatch()
-    const { isAuthenticated } = useSelector(state => state.auth)
+    const { isAuthenticated, error: authError } = useSelector(state => state.auth)
     let navigate = useNavigate()
 
     useEffect(() => {
         if (isAuthenticated) navigate('/')
-    }, [isAuthenticated, navigate])
+        if (authError) {
+            toast.error(authError, { position: 'bottom-right' })
+            dispatch(clearErrors())
+        }
+    }, [authError, dispatch, isAuthenticated, navigate])
 
     const submitHandler = (e) => {
         e.preventDefault()
@@ -70,7 +71,7 @@ const Register = () => {
                     setAvatar(reader.result)
                 }
             }
-            reader.readAsDataURL(e.target.files[0])
+            if (e.target.files?.[0]) reader.readAsDataURL(e.target.files[0])
         } else {
             setUser({ ...user, [e.target.name]: e.target.value })
         }
@@ -79,31 +80,30 @@ const Register = () => {
     const register = async (userData) => {
         try {
             setLoading(true)
-            const config = { headers: { 'Content-Type': 'multipart/form-data' } }
-            const { data } = await axios.post(`http://localhost:4001/api/v1/register`, userData, config)
-            setLoading(false)
+            await dispatch(registerUser(userData))
             navigate('/')
         } catch (error) {
-            setLoading(false)
             setError(error.response?.data?.message || 'Registration failed')
+        } finally {
+            setLoading(false)
         }
     }
 
-    // ── Google sign-in (same as Login page) ───────────────────────────────────
-    const googleHandler = async () => {
+    const socialHandler = async (provider, providerName) => {
         try {
-            const result = await signInWithPopup(auth, googleProvider)
+            const result = await signInWithPopup(auth, provider)
             const idToken = await result.user.getIdToken()
-            dispatch(loginWithGoogle(idToken))
-        } catch (err) {
-            if (
-                err.code !== 'auth/popup-closed-by-user' &&
-                err.code !== 'auth/cancelled-popup-request'
-            ) {
-                toast.error('Google sign-in failed. Please try again.', { position: 'bottom-right' })
-            }
+            dispatch(loginWithFirebase(idToken))
+        } catch (socialError) {
+            if (['auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(socialError.code)) return
+            const message = socialError.code === 'auth/operation-not-allowed'
+                ? `${providerName} sign-in is not enabled in Firebase yet.`
+                : `${providerName} sign-in failed. Please try again.`
+            toast.error(message, { position: 'bottom-right' })
         }
     }
+
+    const googleHandler = () => socialHandler(googleProvider, 'Google')
 
     return (
         <>
@@ -252,6 +252,15 @@ const Register = () => {
                                 <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
                             </svg>
                             Continue with Google
+                        </button>
+                        <button
+                            id="facebook_register_button"
+                            type="button"
+                            className="btn btn-block py-2 mt-2"
+                            style={{ background: '#1877f2', color: '#fff' }}
+                            onClick={() => socialHandler(facebookProvider, 'Facebook')}
+                        >
+                            Continue with Facebook
                         </button>
 
                     </form>

@@ -3,7 +3,6 @@ const Order = require('../models/order')
 const cloudinary = require('cloudinary')
 const fs = require('fs/promises')
 const path = require('path')
-const { randomUUID } = require('crypto')
 const APIFeatures = require('../utils/apiFeatures');
 const Filter = require('bad-words');
 const badWordsFilter = new Filter();
@@ -37,13 +36,13 @@ const saveProductImages = async (images) => {
                 throw new Error('Combined product images must be smaller than 35 MB')
             }
 
-            const extension = match[1].toLowerCase() === 'jpeg' ? 'jpg' : match[1].toLowerCase()
-            const filename = `${randomUUID()}.${extension}`
-            await fs.mkdir(productImageDirectory, { recursive: true })
-            await fs.writeFile(path.join(productImageDirectory, filename), buffer, { flag: 'wx' })
+            const uploadedImage = await cloudinary.v2.uploader.upload(image, {
+                folder: 'products',
+                resource_type: 'image'
+            })
             savedImages.push({
-                public_id: `repo:${filename}`,
-                url: `/images/products/${filename}`
+                public_id: uploadedImage.public_id,
+                url: uploadedImage.secure_url
             })
         }
     } catch (error) {
@@ -55,7 +54,7 @@ const saveProductImages = async (images) => {
 }
 
 const destroyProductImages = async (images = []) => {
-    await Promise.allSettled(images.map(async image => {
+    const results = await Promise.allSettled(images.map(async image => {
         if (image.public_id?.startsWith('repo:')) {
             const filename = image.public_id.slice('repo:'.length)
             if (path.basename(filename) === filename) {
@@ -67,6 +66,11 @@ const destroyProductImages = async (images = []) => {
             await cloudinary.v2.uploader.destroy(image.public_id)
         }
     }))
+    results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+            console.error(`Product image cleanup failed for ${images[index].public_id}:`, result.reason)
+        }
+    })
 }
 
 exports.newProduct = async (req, res, next) => {
@@ -79,7 +83,8 @@ exports.newProduct = async (req, res, next) => {
     try {
         images = await saveProductImages(imageInputs)
     } catch (error) {
-        return res.status(400).json({ message: `Product image upload failed: ${error.message}` })
+        const statusCode = Number.isInteger(error.http_code) ? error.http_code : 400
+        return res.status(statusCode).json({ message: `Product image upload failed: ${error.message}` })
     }
 
     let product
@@ -185,7 +190,8 @@ exports.updateProduct = async (req, res, next) => {
         try {
             updateFields.images = await saveProductImages(imageInputs)
         } catch (error) {
-            return res.status(400).json({ message: `Product image upload failed: ${error.message}` })
+            const statusCode = Number.isInteger(error.http_code) ? error.http_code : 400
+            return res.status(statusCode).json({ message: `Product image upload failed: ${error.message}` })
         }
     }
 
@@ -231,6 +237,13 @@ exports.deleteProduct = async (req, res, next) => {
 
 exports.createProductReview = async (req, res, next) => {
     const { rating, comment, productId } = req.body;
+    const numericRating = Number(rating)
+    if (!productId || !Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+        return res.status(400).json({
+            success: false,
+            message: 'Please select a product and a rating from 1 to 5.'
+        })
+    }
 
     // 6.1 — buyers only: the reviewer must have a Delivered order containing this product
     const purchasedOrder = await Order.findOne({
@@ -256,10 +269,13 @@ exports.createProductReview = async (req, res, next) => {
     const review = {
         user: req.user._id,
         name: req.user.name,
-        rating: Number(rating),
+        rating: numericRating,
         comment
     }
     const product = await Product.findById(productId);
+    if (!product) {
+        return res.status(404).json({ success: false, message: 'Product not found' })
+    }
     const isReviewed = product.reviews.find(
         r => r.user.toString() === req.user._id.toString()
     )
@@ -267,7 +283,7 @@ exports.createProductReview = async (req, res, next) => {
         product.reviews.forEach(review => {
             if (review.user.toString() === req.user._id.toString()) {
                 review.comment = comment;
-                review.rating = rating;
+                review.rating = numericRating;
             }
         })
     } else {
@@ -288,6 +304,9 @@ exports.createProductReview = async (req, res, next) => {
 
 exports.getProductReviews = async (req, res, next) => {
     const product = await Product.findById(req.query.id);
+    if (!product) {
+        return res.status(404).json({ success: false, message: 'Product not found' })
+    }
     res.status(200).json({
         success: true,
         reviews: product.reviews
@@ -295,12 +314,15 @@ exports.getProductReviews = async (req, res, next) => {
 }
 
 exports.deleteReview = async (req, res, next) => {
-    console.log(req.query)
     const product = await Product.findById(req.query.productId);
+    if (!product) {
+        return res.status(404).json({ success: false, message: 'Product not found' })
+    }
     const reviews = product.reviews.filter(review => review._id.toString() !== req.query.id.toString());
     const numOfReviews = reviews.length;
-
-    const ratings = product.reviews.reduce((acc, item) => item.rating + acc, 0) / reviews.length
+    const ratings = numOfReviews
+        ? reviews.reduce((acc, item) => item.rating + acc, 0) / numOfReviews
+        : 0
 
     await Product.findByIdAndUpdate(req.query.productId, {
         reviews,

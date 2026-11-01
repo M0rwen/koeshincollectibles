@@ -43,8 +43,8 @@ These are all 31 requirements from the functional requirements document.
 7.2 Responsive UI
 
 Setup leftovers
-Facebook login (needs a Facebook developer app, so do it last)
-Gmail App Password to replace the prof's SMTP settings (needed for 5.4)
+Facebook login button and Firebase token flow are implemented; enable the Facebook provider and configure a Facebook developer app before testing (do this last).
+Status-update emails now include the generated PDF receipt; configure SMTP credentials before testing email delivery (leave mail settings for last).
 Final test of every item above, then push to GitHub
 
 Note: leave mailtrap settings and config for last. 

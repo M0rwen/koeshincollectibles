@@ -90,20 +90,8 @@ const Home = () => {
     useEffect(() => {
         if (isCollectionsPage || priceRangeInvalid) return
         if (isHomePage) {
-            let cancelled = false
-            const loadHomeCatalog = async () => {
-                let page = 1
-                let result
-                do {
-                    result = await dispatch(getProducts(page, keyword, price, category, rating))
-                    if (cancelled || !result) return
-                    page += 1
-                } while (result.resPerPage > 0 && page <= Math.ceil(result.filteredProductsCount / result.resPerPage))
-            }
-            void loadHomeCatalog()
-            return () => {
-                cancelled = true
-            }
+            dispatch(getProducts(currentPage, keyword, price, category, rating))
+            return
         }
         dispatch(getProducts(currentPage, keyword, price, category, rating))
     }, [currentPage, keyword, price, category, rating, priceRangeInvalid, isCollectionsPage, isHomePage, catalogRetry, dispatch])
@@ -130,7 +118,7 @@ const Home = () => {
 
     useEffect(() => {
         const sentinel = sentinelRef.current
-        if (isCollectionsPage || isHomePage || !sentinel || loading || error || !hasMore) return
+        if (isCollectionsPage || !sentinel || loading || error || !hasMore) return
 
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting) {
@@ -140,7 +128,7 @@ const Home = () => {
 
         observer.observe(sentinel)
         return () => observer.disconnect()
-    }, [error, hasMore, isCollectionsPage, isHomePage, loading])
+    }, [error, hasMore, isCollectionsPage, loading])
 
     const updateCategory = (value) => {
         setCategory(value)
@@ -229,6 +217,29 @@ const Home = () => {
 
                     <ProductShelf eyebrow="JUST UNBOXED" title="New arrivals" products={newestProducts.slice(0, 4)} link="/shop" linkLabel="See every find" />
                     <ProductShelf eyebrow="THE ONES YOU LOVE" title="Fan favorites" products={fanFavorites} link="/shop" linkLabel="Browse the shop" />
+                    {products.length > 4 && (
+                        <ProductShelf
+                            eyebrow="KEEP EXPLORING"
+                            title="More from the cabinet"
+                            products={newestProducts.slice(4)}
+                            link="/shop"
+                            linkLabel="Browse the full shop"
+                        />
+                    )}
+                    {error && products.length > 0 && (
+                        <p className="landing-load-note" role="alert">
+                            More finds couldn’t be loaded. <button type="button" onClick={retryProducts}>Try again</button>
+                        </p>
+                    )}
+                    {loading && products.length > 0 && (
+                        <div className="infinite-loading" role="status"><span className="loading-mark" />Loading more finds...</div>
+                    )}
+                    {!loading && !error && hasMore && (
+                        <div ref={sentinelRef} className="infinite-sentinel" role="status" aria-label="Loading more collectibles" />
+                    )}
+                    {!loading && !hasMore && products.length > 0 && (
+                        <p className="collection-end">You've reached the end of the collection.</p>
+                    )}
 
                     <section className="landing-featured" aria-labelledby="featured-collection-title">
                         <div className="landing-featured-copy">
@@ -255,9 +266,6 @@ const Home = () => {
                         </div>
                     </section>
 
-                    {error && products.length > 0 && (
-                        <p className="landing-load-note" role="status">Some finds couldn’t be loaded. <button type="button" onClick={retryProducts}>Try again</button></p>
-                    )}
                     {error && products.length === 0 && !loading && (
                         <div className="landing-load-error" role="alert">
                             <p>We couldn’t open the cabinet just now.</p>

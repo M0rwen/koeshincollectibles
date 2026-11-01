@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import MetaData from '../Layout/MetaData'
 import { useNavigate } from "react-router-dom";
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // import { getToken } from '../../Utils/helpers';
-import { updateProfile, loadUser, clearErrors } from '../../actions/userActions'
+import { updateProfile, clearErrors } from '../../actions/userActions'
 
 import { UPDATE_PROFILE_RESET } from '../../constants/userConstants'
 import { useDispatch, useSelector } from 'react-redux'
@@ -17,17 +16,17 @@ const UpdateProfile = () => {
     const { user } = useSelector(state => state.auth);
     const { error, isUpdated, loading } = useSelector(state => state.user)
 
-    const [name, setName] = useState('')
-    const [email, setEmail] = useState('')
-    const [contactNumber, setContactNumber] = useState('')
-    const [address, setAddress] = useState('')
+    const [name, setName] = useState(user?.name || '')
+    const [email, setEmail] = useState(user?.email || '')
+    const [contactNumber, setContactNumber] = useState(user?.contactNumber || '')
+    const [address, setAddress] = useState(user?.address || '')
     const [avatar, setAvatar] = useState('')
-    const [avatarPreview, setAvatarPreview] = useState('/images/default_avatar.jpg')
+    const [avatarPreview, setAvatarPreview] = useState(user?.avatar?.url || '/images/default_avatar.jpg')
     // const [error, setError] = useState('')
     // const [user, setUser] = useState({})
     // const [loading, setLoading] = useState(false)
     // const [isUpdated, setIsUpdated] = useState(false)
-    let navigate = useNavigate();
+    const navigate = useNavigate();
 
     // const getProfile = async () => {
     //     const config = {
@@ -85,28 +84,18 @@ const UpdateProfile = () => {
     // }, [])
 
     useEffect(() => {
-        console.log(user)
-        if (user) {
-            setName(user.name);
-            setEmail(user.email);
-            setContactNumber(user.contactNumber || '');
-            setAddress(user.address || '');
-            setAvatarPreview(user.avatar ? user.avatar.url : '/images/default_avatar.jpg')
-        }
         if (error) {
-            // alert.error(error);
-            console.log(error)
+            toast.error(error, { position: 'bottom-right' });
             dispatch(clearErrors());
         }
         if (isUpdated) {
-            // alert.success('User updated successfully')
-            dispatch(loadUser());
+            toast.success('Profile updated successfully', { position: 'bottom-right' });
             navigate('/me', { replace: true })
             dispatch({
                 type: UPDATE_PROFILE_RESET
             })
         }
-    }, [error, isUpdated, user])
+    }, [dispatch, error, isUpdated, navigate, user])
 
     const submitHandler = (e) => {
         e.preventDefault();
@@ -120,6 +109,9 @@ const UpdateProfile = () => {
     }
 
     const onChange = e => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
         const reader = new FileReader();
 
         reader.onload = () => {
@@ -129,7 +121,7 @@ const UpdateProfile = () => {
             }
         }
 
-        reader.readAsDataURL(e.target.files[0])
+        reader.readAsDataURL(file)
 
     }
     // console.log(user)
@@ -153,6 +145,7 @@ const UpdateProfile = () => {
                                 name='name'
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
+                                required
                             />
                         </div>
 
@@ -165,6 +158,7 @@ const UpdateProfile = () => {
                                 name='email'
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                required
                             />
                         </div>
 
@@ -177,6 +171,7 @@ const UpdateProfile = () => {
                                 name='contactNumber'
                                 value={contactNumber}
                                 onChange={(e) => setContactNumber(e.target.value)}
+                                required
                             />
                         </div>
 

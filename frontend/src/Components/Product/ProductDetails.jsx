@@ -21,10 +21,23 @@ const ProductDetails = () => {
     const [comment, setComment] = useState('')
     const [errorReview, setErrorReview] = useState('');
     const [success, setSuccess] = useState('')
+    const [submittingReview, setSubmittingReview] = useState(false)
+    const [showReviewForm, setShowReviewForm] = useState(false)
     // const [user, setUser] = useState(getUser())
 
     let { id } = useParams()
     const dispatch = useDispatch()
+    const existingReview = product.reviews?.find(review => (
+        String(review.user?._id || review.user) === String(user?._id)
+    ))
+
+    const toggleReviewForm = () => {
+        if (!showReviewForm && existingReview) {
+            setRating(Number(existingReview.rating))
+            setComment(existingReview.comment || '')
+        }
+        setShowReviewForm(open => !open)
+    }
 
     const increaseQty = () => {
         setQuantity(current => Math.min(current + 1, product.stock))
@@ -50,38 +63,6 @@ const ProductDetails = () => {
     //     }
     // }
 
-    function setUserRatings() {
-        const stars = document.querySelectorAll('.star');
-        stars.forEach((star, index) => {
-            star.starValue = index + 1;
-            ['click', 'mouseover', 'mouseout'].forEach(function (e) {
-                star.addEventListener(e, showRatings);
-            })
-        })
-        function showRatings(e) {
-            stars.forEach((star, index) => {
-                if (e.type === 'click') {
-                    if (index < this.starValue) {
-                        star.classList.add('orange');
-                        setRating(this.starValue)
-                    } else {
-                        star.classList.remove('orange')
-                    }
-                }
-                if (e.type === 'mouseover') {
-                    if (index < this.starValue) {
-                        star.classList.add('yellow');
-                    } else {
-                        star.classList.remove('yellow')
-                    }
-                }
-                if (e.type === 'mouseout') {
-                    star.classList.remove('yellow')
-                }
-            })
-        }
-    }
-
     const newReview = async (reviewData) => {
         try {
             const config = {
@@ -91,23 +72,32 @@ const ProductDetails = () => {
                 }
             }
 
-            const { data } = await axios.put(`${import.meta.env.VITE_API}/review`, reviewData, config)
+            const { data } = await axios.put(`${import.meta.env.VITE_API}/review`, reviewData, {
+                ...config,
+                headers: { 'Content-Type': 'application/json' },
+                withCredentials: true
+            })
             setSuccess(data.success)
             setErrorReview('')
-
+            dispatch(getProductDetails(id))
+            return true
         } catch (error) {
             setErrorReview(error.response?.data?.message || 'Failed to submit review.')
             setSuccess(false)
+            return false
         }
     }
 
-    const reviewHandler = () => {
-        const formData = new FormData();
-        formData.set('rating', rating);
-        formData.set('comment', comment);
-        formData.set('productId', id);
-        newReview(formData)
-
+    const reviewHandler = async (event) => {
+        event.preventDefault()
+        if (!rating) {
+            setErrorReview('Please select a rating from 1 to 5.')
+            return
+        }
+        setSubmittingReview(true)
+        const submitted = await newReview({ rating, comment, productId: id })
+        setSubmittingReview(false)
+        if (submitted) setShowReviewForm(false)
     }
 
     // useEffect(() => {
@@ -175,93 +165,72 @@ const ProductDetails = () => {
                     {/* <button id="review_btn" type="button" className="btn btn-primary mt-4" data-toggle="modal" data-target="#ratingModal"  >
                         Submit Your Review
                     </button> */}
-                    {user ? <button id="review_btn" type="button" className="btn btn-primary mt-4" data-toggle="modal" data-target="#ratingModal" onClick={setUserRatings} >
-                        Submit Your Review
+                    {user ? <button
+                        id="review_btn"
+                        type="button"
+                        className="btn btn-primary mt-4"
+                        onClick={toggleReviewForm}
+                        aria-expanded={showReviewForm}
+                        aria-controls="review-form"
+                    >
+                        {existingReview ? 'Edit Your Review' : 'Submit Your Review'}
                     </button> :
                         <div className="alert alert-danger mt-5" type='alert'>Login to post your review.</div>}
                     {errorReview && <p className="review-feedback" role="alert" style={{ color: 'red' }}>{errorReview}</p>}
-                    {success && !errorReview && <p className="review-feedback" role="status" style={{ color: 'green' }}>Review submitted successfully.</p>}
+                    {success && !errorReview && (
+                        <p className="review-feedback" role="status" style={{ color: 'green' }}>
+                            {existingReview ? 'Review updated successfully.' : 'Review submitted successfully.'}
+                        </p>
+                    )}
 
-                    {/* <div className="row mt-2 mb-5">
-                        <div className="rating w-50">
-
-                            <div className="modal fade" id="ratingModal" tabIndex="-1" role="dialog" aria-labelledby="ratingModalLabel" aria-hidden="true">
-                                <div className="modal-dialog" role="document">
-                                    <div className="modal-content">
-                                        <div className="modal-header">
-                                            <h5 className="modal-title" id="ratingModalLabel">Submit Review</h5>
-                                            <button type="button" className="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <div className="modal-body">
-
-                                            <ul className="stars" >
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                            </ul>
-
-                                            <textarea
-                                                name="review"
-                                                id="review" className="form-control mt-3"
-
-
+                    {user && showReviewForm && (
+                        <section id="review-form" className="product-review-form" aria-labelledby="review-form-title">
+                            <h2 id="review-form-title">{existingReview ? 'Edit your review' : 'Write your review'}</h2>
+                            <form onSubmit={reviewHandler}>
+                                <fieldset>
+                                    <legend>Rating</legend>
+                                    <div className="review-rating" role="group" aria-label="Select a review rating">
+                                        {[1, 2, 3, 4, 5].map(value => (
+                                            <button
+                                                key={value}
+                                                type="button"
+                                                className={`star ${rating >= value ? 'orange' : ''}`}
+                                                onClick={() => setRating(value)}
+                                                aria-label={`${value} star${value === 1 ? '' : 's'}`}
+                                                aria-pressed={rating === value}
                                             >
-                                            </textarea>
-
-
-                                            <button className="btn my-3 float-right review-btn px-4 text-white" data-dismiss="modal" aria-label="Close" >Submit</button>
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div> */}
-                    <div className="product-review-area">
-                        <div>
-
-                            <div className="modal fade" id="ratingModal" tabIndex="-1" role="dialog" aria-labelledby="ratingModalLabel" aria-hidden="true">
-                                <div className="modal-dialog" role="document">
-                                    <div className="modal-content">
-                                        <div className="modal-header">
-                                            <h5 className="modal-title" id="ratingModalLabel">Submit Review</h5>
-                                            <button type="button" className="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
+                                                <i className="fa fa-star" aria-hidden="true" />
                                             </button>
-                                        </div>
-                                        <div className="modal-body">
-
-                                            <ul className="stars" >
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                            </ul>
-
-                                            <textarea
-                                                name="review"
-                                                id="review" className="form-control mt-3"
-                                                value={comment}
-                                                onChange={(e) => setComment(e.target.value)}
-
-                                            >
-                                            </textarea>
-
-
-                                            <button className="btn my-3 float-right review-btn px-4 text-white" data-dismiss="modal" aria-label="Close" onClick={reviewHandler} >Submit</button>
-                                        </div>
+                                        ))}
                                     </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
+                                </fieldset>
+                                <label htmlFor="review">Comment</label>
+                                <textarea
+                                    name="review"
+                                    id="review"
+                                    className="form-control mt-2"
+                                    value={comment}
+                                    onChange={event => setComment(event.target.value)}
+                                    maxLength={1000}
+                                    rows={4}
+                                />
+                                <button
+                                    type="submit"
+                                    className="btn my-3 review-btn px-4 text-white"
+                                    disabled={submittingReview}
+                                >
+                                    {submittingReview ? 'Submitting...' : 'Submit review'}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn my-3 ml-2"
+                                    onClick={() => setShowReviewForm(false)}
+                                >
+                                    Cancel
+                                </button>
+                            </form>
+                        </section>
+                    )}
                 </div>
                 {product.reviews && product.reviews.length > 0 && (
 

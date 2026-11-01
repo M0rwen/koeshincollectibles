@@ -24,16 +24,10 @@ import {
     NEW_PASSWORD_REQUEST,
     NEW_PASSWORD_SUCCESS,
     NEW_PASSWORD_FAIL,
-    ALL_USERS_REQUEST,
-    ALL_USERS_SUCCESS,
-    ALL_USERS_FAIL,
     UPDATE_USER_REQUEST,
     UPDATE_USER_SUCCESS,
     UPDATE_USER_RESET,
     UPDATE_USER_FAIL,
-    USER_DETAILS_REQUEST,
-    USER_DETAILS_SUCCESS,
-    USER_DETAILS_FAIL,
     DELETE_USER_REQUEST,
     DELETE_USER_SUCCESS,
     DELETE_USER_RESET,
@@ -50,6 +44,7 @@ export const authReducer = (state = { user: {} }, action) => {
                 ...state,
                 loading: true,
                 isAuthenticated: false,
+                error: null
             }
         case REGISTER_USER_SUCCESS:
         case LOGIN_SUCCESS:
@@ -58,17 +53,30 @@ export const authReducer = (state = { user: {} }, action) => {
                 ...state,
                 loading: false,
                 isAuthenticated: true,
+                user: action.payload,
+                error: null
+            }
+        case UPDATE_PROFILE_SUCCESS:
+            return {
+                ...state,
                 user: action.payload
             }
         case REGISTER_USER_FAIL:
         case LOGIN_FAIL:
-        case LOAD_USER_FAIL:
             return {
                 ...state,
                 loading: false,
                 isAuthenticated: false,
                 user: null,
                 error: action.payload
+            }
+        case LOAD_USER_FAIL:
+            return {
+                ...state,
+                loading: false,
+                isAuthenticated: false,
+                user: null,
+                error: null
             }
 
         case LOGOUT_SUCCESS:
@@ -111,7 +119,7 @@ export const userReducer = (state = {}, action) => {
             return {
                 ...state,
                 loading: false,
-                isUpdated: action.payload
+                isUpdated: true
             }
         case UPDATE_PROFILE_RESET:
         case UPDATE_PASSWORD_RESET:

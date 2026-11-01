@@ -20,45 +20,27 @@ import {
     FORGOT_PASSWORD_REQUEST,
     FORGOT_PASSWORD_SUCCESS,
     FORGOT_PASSWORD_FAIL,
-    NEW_PASSWORD_REQUEST,
-    NEW_PASSWORD_SUCCESS,
-    NEW_PASSWORD_FAIL,
-    ALL_USERS_REQUEST,
-    ALL_USERS_SUCCESS,
-    ALL_USERS_FAIL,
-    UPDATE_USER_REQUEST,
-    UPDATE_USER_SUCCESS,
-    UPDATE_USER_FAIL,
-    USER_DETAILS_REQUEST,
-    USER_DETAILS_SUCCESS,
-    USER_DETAILS_FAIL,
-    DELETE_USER_REQUEST,
-    DELETE_USER_SUCCESS,
-    DELETE_USER_FAIL,
     CLEAR_ERRORS
 } from '../constants/userConstants'
 
-// export const register = (userData) => async (dispatch) => {
-//     try {
-//         dispatch({ type: REGISTER_USER_REQUEST })
-//         const config = {
-//             headers: {
-//                 'Content-Type': 'multipart/form-data'
-//             }
-//         }
-//         const { data } = await axios.post(`${import.meta.env.VITE_API}/register`, userData, config)
-
-//         dispatch({
-//             type: REGISTER_USER_SUCCESS,
-//             payload: data.user
-//         })
-//     } catch (error) {
-//         dispatch({
-//             type: REGISTER_USER_FAIL,
-//             payload: error.response.data.message
-//         })
-//     }
-// }
+export const register = (userData) => async (dispatch) => {
+    try {
+        dispatch({ type: REGISTER_USER_REQUEST })
+        const { data } = await axios.post(
+            `${import.meta.env.VITE_API}/register`,
+            userData,
+            { withCredentials: true }
+        )
+        dispatch({ type: REGISTER_USER_SUCCESS, payload: data.user })
+        return data.user
+    } catch (error) {
+        dispatch({
+            type: REGISTER_USER_FAIL,
+            payload: error.response?.data?.message || error.message
+        })
+        throw error
+    }
+}
 
 export const login = (identifier, password) => async (dispatch) => {
     try {
@@ -71,23 +53,20 @@ export const login = (identifier, password) => async (dispatch) => {
         }
 
         const { data } = await axios.post(`${import.meta.env.VITE_API}/login`, { identifier, password }, config)
-        console.log(data.user)
         dispatch({
             type: LOGIN_SUCCESS,
             payload: data.user
         })
     } catch (error) {
-        console.log(error.response.data.message)
-
         dispatch({
             type: LOGIN_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.response?.data?.error || error.message
         })
     }
 }
 
-// Send the Google ID token to our backend and log the user in
-export const loginWithGoogle = (idToken) => async (dispatch) => {
+// Send the Firebase ID token to our backend and log the user in
+export const loginWithFirebase = (idToken) => async (dispatch) => {
     try {
         dispatch({ type: LOGIN_REQUEST })
         const { data } = await axios.post(
@@ -99,7 +78,7 @@ export const loginWithGoogle = (idToken) => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: LOGIN_FAIL,
-            payload: error.response?.data?.message || 'Google login failed'
+            payload: error.response?.data?.message || error.message || 'Social login failed'
         })
     }
 }
@@ -119,7 +98,7 @@ export const logout = () => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: LOGOUT_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message
         })
     }
 }
@@ -141,7 +120,7 @@ export const loadUser = () => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: LOAD_USER_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message
         })
     }
 }
@@ -159,13 +138,12 @@ export const updateProfile = (userData) => async (dispatch) => {
         const { data } = await axios.put(`${import.meta.env.VITE_API}/me/update`, userData, config)
         dispatch({
             type: UPDATE_PROFILE_SUCCESS,
-            payload: data.success
+            payload: data.user
         })
     } catch (error) {
-        console.log(error)
         dispatch({
             type: UPDATE_PROFILE_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message
         })
     }
 

@@ -620,6 +620,18 @@ ul.CTAs a {
   color: var(--shop-orange);
 }
 
+.review-rating .star {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.review-rating .star:focus-visible {
+  outline: 2px solid var(--shop-orange);
+  outline-offset: 3px;
+}
+
 .yellow {
   color: var(--shop-star);
 }

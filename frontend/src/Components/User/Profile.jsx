@@ -1,12 +1,7 @@
-import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Loader from '../Layout/Loader'
 import MetaData from '../Layout/MetaData'
 
-import axios from 'axios';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-// import { getToken } from '../../Utils/helpers';
 import { useSelector } from 'react-redux'
 const Profile = () => {
     const { user, loading } = useSelector(state => state.auth)
@@ -41,7 +36,7 @@ const Profile = () => {
     // }, [])
     return (
         <>
-            {loading ? <Loader /> : (
+            {loading || !user ? <Loader /> : (
                 <>
                     <MetaData title={'Your Profile'} />
 
@@ -49,7 +44,7 @@ const Profile = () => {
                     <div className="row justify-content-around mt-5 user-info">
                         <div className="col-12 col-md-3">
                             <figure className='avatar avatar-profile'>
-                                <img className="rounded-circle img-fluid" src={user.avatar ? user.avatar.url : null} alt={user.name} />
+                                <img className="rounded-circle img-fluid" src={user.avatar?.url || '/images/default_avatar.jpg'} alt={user.name} />
                             </figure>
                             <Link to="/me/update" id="edit_profile" className="btn btn-primary btn-block my-5">
                                 Edit Profile

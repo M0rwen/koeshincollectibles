@@ -16,7 +16,7 @@ const ProcessOrder = () => {
     const dispatch = useDispatch();
     const { loading, order = {} } = useSelector(state => state.orderDetails)
 
-    const { error, isUpdated } = useSelector(state => state.order)
+    const { error, isUpdated, emailSent } = useSelector(state => state.order)
     const { shippingInfo, orderItems, paymentInfo, paymentMethod, user, totalPrice, orderStatus } = order
 
     const [status, setStatus] = useState('')
@@ -79,13 +79,17 @@ const ProcessOrder = () => {
             // setError('')
         }
         if (isUpdated) {
-            successMsg('Order updated successfully');
+            if (emailSent) {
+                successMsg('Order updated and customer notified.');
+            } else {
+                toast.warning('Order status updated, but the email notification failed. Check the SMTP configuration.');
+            }
             dispatch({ type: UPDATE_ORDER_RESET })
 
             // setIsUpdated('')
             navigate('/admin/orders')
         }
-    }, [error, isUpdated, orderId, dispatch, navigate])
+    }, [emailSent, error, isUpdated, orderId, dispatch, navigate])
 
     const updateOrderHandler = (id) => {
         dispatch(updateOrder(id, { status: status || order.orderStatus || 'Processing' }))

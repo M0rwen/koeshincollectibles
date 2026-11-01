@@ -4,6 +4,8 @@ import './App.css'
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { ToastContainer, } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useDispatch } from 'react-redux'
+import { loadUser } from './actions/userActions'
 
 
 
@@ -53,6 +55,7 @@ const CatalogPage = () => {
 }
 
 function App() {
+  const dispatch = useDispatch()
   const [theme, setTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem('koeshin-theme')
     const initialTheme = savedTheme === 'light' || savedTheme === 'dark'
@@ -61,6 +64,10 @@ function App() {
     document.documentElement.dataset.theme = initialTheme
     return initialTheme
   })
+
+  useEffect(() => {
+    dispatch(loadUser())
+  }, [dispatch])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -165,9 +172,9 @@ function App() {
           <Route path="/register" element={<Register exact="true" />} />
           <Route path="/password/forgot" element={<ForgotPassword />} exact="true" />
           <Route path="/password/reset/:token" element={<NewPassword />} exact="true" />
-          <Route path="/me" element={<Profile />} exact="true" />
-          <Route path="/me/update" element={<UpdateProfile />} exact="true" />
-          <Route path="/password/update" element={<UpdatePassword />} />
+          <Route path="/me" element={<ProtectedRoute><Profile /></ProtectedRoute>} exact="true" />
+          <Route path="/me/update" element={<ProtectedRoute><UpdateProfile /></ProtectedRoute>} exact="true" />
+          <Route path="/password/update" element={<ProtectedRoute><UpdatePassword /></ProtectedRoute>} />
           {/* <Route path="/cart" element={<Cart cartItems={state.cartItems} addItemToCart={addItemToCart} removeItemFromCart={removeItemFromCart} />} exact="true" /> */}
           <Route path="/cart" element={<Cart />} exact="true" />
           {/* <Route path="/shipping" element={<Shipping shipping={state.shippingInfo} saveShippingInfo={saveShippingInfo} />} />
@@ -175,12 +182,12 @@ function App() {
           <Route path="/payment" element={<Payment cartItems={state.cartItems} shippingInfo={state.shippingInfo} />} /> */}
 
 
-          <Route path="/shipping" element={<Shipping />} />
-          <Route path="/confirm" element={<ConfirmOrder />} />
-          <Route path="/payment" element={<Payment />} />
+          <Route path="/shipping" element={<ProtectedRoute><Shipping /></ProtectedRoute>} />
+          <Route path="/confirm" element={<ProtectedRoute><ConfirmOrder /></ProtectedRoute>} />
+          <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
           <Route path="/success" element={<OrderSuccess />} />
-          <Route path="/orders/me" element={<ListOrders />} />
-          <Route path="/order/:id" element={<OrderDetails />} />
+          <Route path="/orders/me" element={<ProtectedRoute><ListOrders /></ProtectedRoute>} />
+          <Route path="/order/:id" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
           {/* <Route path="/dashboard" element={<Dashboard />} /> */}
 
           {/* <Route path="/admin/products" element={<ProductsList />} /> */}
@@ -192,11 +199,11 @@ function App() {
           /> */}
           <Route
             path="/admin/order/:id"
-            element={<ProcessOrder />} />
+            element={<ProtectedRoute isAdmin={true}><ProcessOrder /></ProtectedRoute>} />
           <Route
             path="/admin/users"
-            element={<UsersList />} />
-          <Route path="/admin/user/:id" element={<UpdateUser />} />
+            element={<ProtectedRoute isAdmin={true}><UsersList /></ProtectedRoute>} />
+          <Route path="/admin/user/:id" element={<ProtectedRoute isAdmin={true}><UpdateUser /></ProtectedRoute>} />
 
           <Route
             path="/admin/products"

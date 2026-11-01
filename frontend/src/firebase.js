@@ -3,7 +3,7 @@
 // Never hard-code API keys here.
 
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { FacebookAuthProvider, getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,7 +14,20 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+const missingConfig = Object.entries(firebaseConfig)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+if (missingConfig.length > 0) {
+    throw new Error(
+        `Missing Firebase configuration: ${missingConfig.join(', ')}. ` +
+        'Set the VITE_FIREBASE_* values in frontend/.env and restart Vite.'
+    );
+}
+
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const facebookProvider = new FacebookAuthProvider();
+facebookProvider.addScope('email');

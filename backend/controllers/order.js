@@ -176,54 +176,68 @@ exports.updateOrder = async (req, res, next) => {
     order.orderStatus = nextStatus
     await order.save()
 
-    // 5.4 — send status-update email with order summary
+    // 5.4 — send status-update email with order summary and PDF receipt.
+    let emailSent = false
     try {
         const customer = await User.findById(order.user).select('email name')
-        if (customer && customer.email) {
-            const itemsHtml = order.orderItems.map(item =>
-                `<tr>
-                    <td style="padding:4px 8px">${item.name}</td>
-                    <td style="padding:4px 8px;text-align:center">${item.quantity}</td>
-                    <td style="padding:4px 8px;text-align:right">PHP ${Number(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-                </tr>`
-            ).join('')
-
-            const statusColor = nextStatus === 'Delivered' ? '#22863a' : nextStatus === 'Shipped' ? '#0366d6' : '#6f42c1'
-
-            await sendEmail({
-                email: customer.email,
-                subject: `Koeshin Collectibles – Order ${order.orderReference || order._id} is now ${nextStatus}`,
-                message: `
-                    <div style="font-family:sans-serif;max-width:600px;margin:auto">
-                        <h2 style="margin-bottom:4px">Order status update</h2>
-                        <p>Hi ${customer.name},</p>
-                        <p>Your order <strong>${order.orderReference || order._id}</strong> has been updated to:
-                            <span style="color:${statusColor};font-weight:bold"> ${nextStatus}</span>
-                        </p>
-                        <table style="width:100%;border-collapse:collapse;margin:16px 0">
-                            <thead>
-                                <tr style="background:#f6f8fa">
-                                    <th style="padding:6px 8px;text-align:left">Item</th>
-                                    <th style="padding:6px 8px;text-align:center">Qty</th>
-                                    <th style="padding:6px 8px;text-align:right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>${itemsHtml}</tbody>
-                        </table>
-                        <p style="text-align:right"><strong>Total: PHP ${Number(order.totalPrice).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></p>
-                        <p style="color:#666;font-size:0.9em">You can view your full order and download your PDF receipt from your order history page.</p>
-                        <p>Thank you for shopping at Koeshin Collectibles!</p>
-                    </div>
-                `
-            })
+        if (!customer?.email) {
+            throw new Error('Customer email is unavailable')
         }
+
+        const itemsHtml = order.orderItems.map(item =>
+            `<tr>
+                <td style="padding:4px 8px">${escapeHtml(item.name)}</td>
+                <td style="padding:4px 8px;text-align:center">${item.quantity}</td>
+                <td style="padding:4px 8px;text-align:right">PHP ${Number(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+            </tr>`
+        ).join('')
+
+        const statusColor = nextStatus === 'Delivered' ? '#22863a' : nextStatus === 'Shipped' ? '#0366d6' : '#6f42c1'
+        const receipt = await createOrderReceiptPdf({
+            ...order.toObject(),
+            customer: { name: customer.name, email: customer.email }
+        })
+
+        await sendEmail({
+            email: customer.email,
+            subject: `Koeshin Collectibles – Order ${order.orderReference || order._id} is now ${nextStatus}`,
+            message: `
+                <div style="font-family:sans-serif;max-width:600px;margin:auto">
+                    <h2 style="margin-bottom:4px">Order status update</h2>
+                    <p>Hi ${escapeHtml(customer.name)},</p>
+                    <p>Your order <strong>${order.orderReference || order._id}</strong> has been updated to:
+                        <span style="color:${statusColor};font-weight:bold"> ${nextStatus}</span>
+                    </p>
+                    <table style="width:100%;border-collapse:collapse;margin:16px 0">
+                        <thead>
+                            <tr style="background:#f6f8fa">
+                                <th style="padding:6px 8px;text-align:left">Item</th>
+                                <th style="padding:6px 8px;text-align:center">Qty</th>
+                                <th style="padding:6px 8px;text-align:right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemsHtml}</tbody>
+                    </table>
+                    <p style="text-align:right"><strong>Total: PHP ${Number(order.totalPrice).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></p>
+                    <p style="color:#666;font-size:0.9em">You can view your full order and download your PDF receipt from your order history page.</p>
+                    <p>Thank you for shopping at Koeshin Collectibles!</p>
+                </div>
+            `,
+            attachments: [{
+                filename: receipt.filename,
+                content: receipt.buffer,
+                contentType: 'application/pdf'
+            }]
+        })
+        emailSent = true
     } catch (emailErr) {
-        // Do not fail the request if email delivery fails
         console.error('Order status email failed:', emailErr.message)
     }
 
     res.status(200).json({
         success: true,
+        emailSent,
+        message: emailSent ? undefined : 'Order status updated, but the email notification could not be sent.'
     })
 }
 
