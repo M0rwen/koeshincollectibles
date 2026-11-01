@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from '../Utils/api';
 
 import {
     ALL_PRODUCTS_REQUEST,
@@ -50,7 +50,7 @@ export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], cat
         })
 
         const link = `${import.meta.env.VITE_API}/products?${query.toString()}`
-        const { data } = await axios.get(link)
+        const { data } = await api.get(link)
         console.log(data)
         dispatch({
             type: ALL_PRODUCTS_SUCCESS,
@@ -70,8 +70,8 @@ export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], cat
 
 export const getProductDetails = (id) => async (dispatch) => {
     try {
-        dispatch({ type: PRODUCT_DETAILS_REQUEST })
-        const { data } = await axios.get(`${import.meta.env.VITE_API}/product/${id}`)
+        dispatch({ type: PRODUCT_DETAILS_REQUEST, payload: id })
+        const { data } = await api.get(`${import.meta.env.VITE_API}/product/${id}`)
         dispatch({
             type: PRODUCT_DETAILS_SUCCESS,
             payload: data.product
@@ -79,7 +79,7 @@ export const getProductDetails = (id) => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: PRODUCT_DETAILS_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message
         })
     }
 }
@@ -94,7 +94,7 @@ export const newProduct = (productData) => async (dispatch) => {
             },
             withCredentials: true //correct
         }
-        const { data } = await axios.post(`${import.meta.env.VITE_API}/admin/product/new`, productData, config)
+        const { data } = await api.post(`${import.meta.env.VITE_API}/admin/product/new`, productData, config)
         dispatch({
             type: NEW_PRODUCT_SUCCESS,
             payload: data
@@ -107,10 +107,10 @@ export const newProduct = (productData) => async (dispatch) => {
     }
 }
 
-export const getAdminProducts = () => async (dispatch) => {
+export const getAdminProducts = (deleted = false) => async (dispatch) => {
     try {
         dispatch({ type: ADMIN_PRODUCTS_REQUEST })
-        const { data } = await axios.get(`${import.meta.env.VITE_API}/admin/products`, {
+        const { data } = await api.get(`${import.meta.env.VITE_API}/admin/products${deleted ? '?deleted=true' : ''}`, {
             //AxiosRequestConfig parameter
             withCredentials: true //correct
         })
@@ -136,16 +136,18 @@ export const updateProduct = (id, productData) => async (dispatch) => {
             },
             withCredentials: true //correct
         }
-        const { data } = await axios.put(`${import.meta.env.VITE_API}/admin/product/${id}`, productData, config)
+        const { data } = await api.put(`${import.meta.env.VITE_API}/admin/product/${id}`, productData, config)
         dispatch({
             type: UPDATE_PRODUCT_SUCCESS,
-            payload: data
+            payload: data.product
         })
+        return { success: true, product: data.product }
     } catch (error) {
         dispatch({
             type: UPDATE_PRODUCT_FAIL,
             payload: error.response?.data?.message || error.message
         })
+        return { success: false }
     }
 }
 
@@ -154,7 +156,7 @@ export const deleteProduct = (id) => async (dispatch) => {
 
         dispatch({ type: DELETE_PRODUCT_REQUEST })
 
-        const { data } = await axios.delete(`${import.meta.env.VITE_API}/admin/product/${id}`, { withCredentials: true })
+        const { data } = await api.delete(`${import.meta.env.VITE_API}/admin/product/${id}`, { withCredentials: true })
 
         dispatch({
             type: DELETE_PRODUCT_SUCCESS,
@@ -178,16 +180,19 @@ export const newReview = (reviewData) => async (dispatch) => {
             },
             withCredentials: true
         }
-        const { data } = await axios.put(`${import.meta.env.VITE_API}/review`, reviewData, config)
+        const { data } = await api.put(`${import.meta.env.VITE_API}/review`, reviewData, config)
         dispatch({
             type: NEW_REVIEW_SUCCESS,
             payload: data.success
         })
+        return { success: data.success }
     } catch (error) {
+        const message = error.response?.data?.message || error.message || 'Failed to submit review.'
         dispatch({
             type: NEW_REVIEW_FAIL,
-            payload: error.response.data.message
+            payload: message
         })
+        return { success: false, message }
     }
 }
 
@@ -207,7 +212,7 @@ export const bulkDeleteProducts = (ids) => async (dispatch) => {
             },
             withCredentials: true
         }
-        const { data } = await axios.delete(`${import.meta.env.VITE_API}/admin/products/bulk`, {
+        const { data } = await api.delete(`${import.meta.env.VITE_API}/admin/products/bulk`, {
             ...config,
             data: { ids }
         })
@@ -215,10 +220,12 @@ export const bulkDeleteProducts = (ids) => async (dispatch) => {
             type: BULK_DELETE_PRODUCTS_SUCCESS,
             payload: data
         })
+        return true
     } catch (error) {
         dispatch({
             type: BULK_DELETE_PRODUCTS_FAIL,
             payload: error.response?.data?.message || error.message
         })
+        return false
     }
 }

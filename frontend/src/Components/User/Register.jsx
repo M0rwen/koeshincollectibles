@@ -1,68 +1,58 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useFormik } from 'formik'
 import MetaData from '../Layout/MetaData'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useDispatch, useSelector } from 'react-redux'
 import { loginWithGoogle } from '../../actions/userActions'
+import { registerSchema } from '../../validation/schemas'
 
 // Firebase popup helpers
 import { signInWithPopup } from 'firebase/auth'
 import { auth, googleProvider } from '../../firebase'
 
 const Register = () => {
-
-    const [user, setUser] = useState({
-        name: '',
-        username: '',
-        email: '',
-        contactNumber: '',
-        password: '',
-    })
-
-    const { name, username, email, contactNumber, password } = user
-
     const [avatar, setAvatar] = useState('')
     const [avatarPreview, setAvatarPreview] = useState('/images/default_avatar.jpg')
 
     const [error, setError] = useState('')
-    const [loading, setLoading] = useState(false)
 
     const dispatch = useDispatch()
     const { isAuthenticated } = useSelector(state => state.auth)
     let navigate = useNavigate()
 
+    const formik = useFormik({
+        initialValues: {
+            name: '',
+            username: '',
+            email: '',
+            contactNumber: '',
+            password: ''
+        },
+        validationSchema: registerSchema,
+        validateOnMount: true,
+        onSubmit: async values => {
+            setError('')
+            const formData = new FormData()
+            formData.set('name', values.name.trim())
+            formData.set('username', values.username.trim())
+            formData.set('email', values.email.trim())
+            formData.set('contactNumber', values.contactNumber)
+            formData.set('password', values.password)
+            formData.set('avatar', avatar)
+            await register(formData)
+        }
+    })
+
     useEffect(() => {
         if (isAuthenticated) navigate('/')
     }, [isAuthenticated, navigate])
 
-    const submitHandler = (e) => {
-        e.preventDefault()
-
-        if (!name || !username || !email || !contactNumber || !password) {
-            setError('Please complete all required fields.')
-            return
-        }
-
-        if (password.length < 6) {
-            setError('Password must be at least 6 characters long.')
-            return
-        }
-
-        const formData = new FormData()
-        formData.set('name', name)
-        formData.set('username', username)
-        formData.set('email', email)
-        formData.set('contactNumber', contactNumber)
-        formData.set('password', password)
-        formData.set('avatar', avatar)
-
-        register(formData)
-    }
-
     const onChange = e => {
         if (e.target.name === 'avatar') {
+            if (!e.target.files?.[0]) return
             const reader = new FileReader()
             reader.onload = () => {
                 if (reader.readyState === 2) {
@@ -71,20 +61,15 @@ const Register = () => {
                 }
             }
             reader.readAsDataURL(e.target.files[0])
-        } else {
-            setUser({ ...user, [e.target.name]: e.target.value })
         }
     }
 
     const register = async (userData) => {
         try {
-            setLoading(true)
             const config = { headers: { 'Content-Type': 'multipart/form-data' } }
-            const { data } = await axios.post(`http://localhost:4001/api/v1/register`, userData, config)
-            setLoading(false)
+            await axios.post(`http://localhost:4001/api/v1/register`, userData, config)
             navigate('/')
         } catch (error) {
-            setLoading(false)
             setError(error.response?.data?.message || 'Registration failed')
         }
     }
@@ -111,7 +96,7 @@ const Register = () => {
 
             <div className="row wrapper">
                 <div className="col-10 col-lg-5">
-                    <form className="shadow-lg" onSubmit={submitHandler} encType='multipart/form-data'>
+                    <form className="shadow-lg" onSubmit={formik.handleSubmit} encType='multipart/form-data' noValidate>
                         <h1 className="mb-3">Register</h1>
 
                         {error && (
@@ -124,11 +109,14 @@ const Register = () => {
                                 type="text"
                                 id="name_field"
                                 className="form-control"
-                                name='name'
-                                value={name}
-                                onChange={onChange}
-                                required
+                                name="name"
+                                value={formik.values.name}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                aria-invalid={Boolean(formik.touched.name && formik.errors.name)}
+                                aria-describedby={formik.touched.name && formik.errors.name ? 'name_error' : undefined}
                             />
+                            {formik.touched.name && formik.errors.name && <div className="field-error" id="name_error" role="alert">{formik.errors.name}</div>}
                         </div>
 
                         <div className="form-group">
@@ -137,11 +125,15 @@ const Register = () => {
                                 type="text"
                                 id="username_field"
                                 className="form-control"
-                                name='username'
-                                value={username}
-                                onChange={onChange}
-                                required
+                                name="username"
+                                autoComplete="username"
+                                value={formik.values.username}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                aria-invalid={Boolean(formik.touched.username && formik.errors.username)}
+                                aria-describedby={formik.touched.username && formik.errors.username ? 'username_error' : undefined}
                             />
+                            {formik.touched.username && formik.errors.username && <div className="field-error" id="username_error" role="alert">{formik.errors.username}</div>}
                         </div>
 
                         <div className="form-group">
@@ -150,11 +142,15 @@ const Register = () => {
                                 type="email"
                                 id="email_field"
                                 className="form-control"
-                                name='email'
-                                value={email}
-                                onChange={onChange}
-                                required
+                                name="email"
+                                autoComplete="email"
+                                value={formik.values.email}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                aria-invalid={Boolean(formik.touched.email && formik.errors.email)}
+                                aria-describedby={formik.touched.email && formik.errors.email ? 'email_error' : undefined}
                             />
+                            {formik.touched.email && formik.errors.email && <div className="field-error" id="email_error" role="alert">{formik.errors.email}</div>}
                         </div>
 
                         <div className="form-group">
@@ -163,11 +159,16 @@ const Register = () => {
                                 type="tel"
                                 id="contact_field"
                                 className="form-control"
-                                name='contactNumber'
-                                value={contactNumber}
-                                onChange={onChange}
-                                required
+                                name="contactNumber"
+                                inputMode="numeric"
+                                autoComplete="tel"
+                                value={formik.values.contactNumber}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                aria-invalid={Boolean(formik.touched.contactNumber && formik.errors.contactNumber)}
+                                aria-describedby={formik.touched.contactNumber && formik.errors.contactNumber ? 'contact_error' : undefined}
                             />
+                            {formik.touched.contactNumber && formik.errors.contactNumber && <div className="field-error" id="contact_error" role="alert">{formik.errors.contactNumber}</div>}
                         </div>
 
                         <div className="form-group">
@@ -176,12 +177,15 @@ const Register = () => {
                                 type="password"
                                 id="password_field"
                                 className="form-control"
-                                name='password'
-                                value={password}
-                                minLength={6}
-                                onChange={onChange}
-                                required
+                                name="password"
+                                autoComplete="new-password"
+                                value={formik.values.password}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                aria-invalid={Boolean(formik.touched.password && formik.errors.password)}
+                                aria-describedby={formik.touched.password && formik.errors.password ? 'password_error' : undefined}
                             />
+                            {formik.touched.password && formik.errors.password && <div className="field-error" id="password_error" role="alert">{formik.errors.password}</div>}
                         </div>
 
                         <div className='form-group'>
@@ -216,9 +220,9 @@ const Register = () => {
                             id="register_button"
                             type="submit"
                             className="btn btn-block py-3"
-                            disabled={loading}
+                            disabled={!formik.isValid || formik.isSubmitting}
                         >
-                            REGISTER
+                            {formik.isSubmitting ? 'REGISTERING…' : 'REGISTER'}
                         </button>
 
                         {/* ── Or register with Google ── */}

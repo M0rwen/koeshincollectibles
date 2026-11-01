@@ -58,7 +58,14 @@ const userSchema = new mongoose.Schema({
         default: Date.now
     },
     resetPasswordToken: String,
-    resetPasswordExpire: Date
+    resetPasswordExpire: Date,
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: Date,
+    originalEmail: String,
+    originalUsername: String
 })
 userSchema.pre('save', async function () {
     if (!this.isModified('password')) {

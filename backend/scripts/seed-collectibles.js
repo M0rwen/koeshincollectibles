@@ -186,19 +186,41 @@ const seedProducts = async () => {
     })
 
     let inserted = 0
+    let skippedDeleted = 0
 
     for (const product of products) {
         const { imageUrl, price, category, ...productFields } = product
+        const activeProduct = await Product.findOne({
+            name: product.name,
+            isDeleted: { $ne: true }
+        })
+        if (!activeProduct) {
+            const deletedProduct = await Product.findOne({
+                name: product.name,
+                isDeleted: true
+            })
+            if (deletedProduct) {
+                skippedDeleted += 1
+                console.log(`Skipping soft-deleted seed product "${product.name}"; restore it in Admin before seeding again.`)
+                continue
+            }
+        }
+
         const images = await getProductImage(product)
         const result = await Product.updateOne(
-            { name: product.name },
-            { $set: { price, images, category }, $setOnInsert: productFields },
+            activeProduct
+                ? { _id: activeProduct._id, isDeleted: { $ne: true } }
+                : { name: product.name, isDeleted: { $ne: true } },
+            {
+                $set: { price, images, category },
+                $setOnInsert: { ...productFields, isDeleted: false }
+            },
             { upsert: true }
         )
         inserted += result.upsertedCount
     }
 
-    console.log(`Collectible catalog ready: ${inserted} added, ${products.length - inserted} already present.`)
+    console.log(`Collectible catalog ready: ${inserted} added, ${products.length - inserted - skippedDeleted} active matches updated, ${skippedDeleted} soft-deleted matches skipped.`)
 }
 
 if (require.main === module) {

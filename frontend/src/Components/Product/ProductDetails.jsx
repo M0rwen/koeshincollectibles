@@ -4,12 +4,11 @@ import MetaData from '../Layout/MetaData'
 import { Carousel } from 'react-bootstrap'
 
 import 'react-toastify/dist/ReactToastify.css';
-import axios from 'axios'
 
-import { formatCurrency, getToken } from '../../Utils/helpers'
+import { formatCurrency } from '../../Utils/helpers'
 import ListReviews from '../Review/ListReviews';
 import { useDispatch, useSelector } from 'react-redux'
-import { getProductDetails } from '../../actions/productActions'
+import { getProductDetails, newReview as submitReview } from '../../actions/productActions'
 import { addItemToCart } from '../../actions/cartActions'
 const ProductDetails = () => {
 
@@ -82,32 +81,15 @@ const ProductDetails = () => {
         }
     }
 
-    const newReview = async (reviewData) => {
-        try {
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getToken()}`
-                }
-            }
-
-            const { data } = await axios.put(`${import.meta.env.VITE_API}/review`, reviewData, config)
-            setSuccess(data.success)
+    const reviewHandler = async () => {
+        const result = await dispatch(submitReview({ rating, comment, productId: id }))
+        if (result?.success) {
+            setSuccess(true)
             setErrorReview('')
-
-        } catch (error) {
-            setErrorReview(error.response?.data?.message || 'Failed to submit review.')
+        } else {
+            setErrorReview(result?.message || 'Failed to submit review.')
             setSuccess(false)
         }
-    }
-
-    const reviewHandler = () => {
-        const formData = new FormData();
-        formData.set('rating', rating);
-        formData.set('comment', comment);
-        formData.set('productId', id);
-        newReview(formData)
-
     }
 
     // useEffect(() => {

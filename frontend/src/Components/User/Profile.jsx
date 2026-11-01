@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import Loader from '../Layout/Loader'
 import MetaData from '../Layout/MetaData'
 
@@ -39,6 +39,8 @@ const Profile = () => {
     //     getProfile()
 
     // }, [])
+    if (!loading && !user) return <Navigate to="/login" replace />
+
     return (
         <>
             {loading ? <Loader /> : (
@@ -46,7 +48,7 @@ const Profile = () => {
                     <MetaData title={'Your Profile'} />
 
                     <h2 className="mt-5 ml-5">My Profile</h2>
-                    <div className="row justify-content-around mt-5 user-info">
+                    {user && <div className="row justify-content-around mt-5 user-info">
                         <div className="col-12 col-md-3">
                             <figure className='avatar avatar-profile'>
                                 <img className="rounded-circle img-fluid" src={user.avatar ? user.avatar.url : null} alt={user.name} />
@@ -82,7 +84,7 @@ const Profile = () => {
                                 Change Password
                             </Link>
                         </div>
-                    </div>
+                    </div>}
                 </>
             )}
         </>

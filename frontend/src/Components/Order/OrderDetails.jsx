@@ -8,7 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useDispatch, useSelector } from 'react-redux'
 
 import { getOrderDetails } from '../../actions/orderActions'
-import { formatCurrency } from '../../Utils/helpers'
+import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
 import { downloadOrderReceipt } from '../../Utils/orderReceipt'
 
 // import { getToken } from '../../Utils/helpers'
@@ -20,7 +20,7 @@ const OrderDetails = () => {
     const dispatch = useDispatch();
     const { loading, error, order = {} } = useSelector(state => state.orderDetails)
 
-    const { shippingInfo, orderItems, paymentInfo, paymentMethod, user, totalPrice, orderStatus } = order
+    const { shippingInfo, orderItems, paymentInfo, paymentMethod, user, orderStatus } = order
     let { id } = useParams();
 
     // const getOrderDetails = async (id) => {
@@ -57,6 +57,7 @@ const OrderDetails = () => {
     const shippingDetails = shippingInfo && `${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.postalCode}, ${shippingInfo.country}`
 
     const isPaid = paymentInfo && paymentInfo.status === 'succeeded' ? true : false
+    const totals = orderItems ? calculateOrderTotals(orderItems) : null
 
     return (
         <>
@@ -81,7 +82,14 @@ const OrderDetails = () => {
                             <p><b>Name:</b> {user && user.name}</p>
                             <p><b>Phone:</b> {shippingInfo && shippingInfo.phoneNo}</p>
                             <p className="mb-4"><b>Address:</b>{shippingDetails}</p>
-                            <p><b>Amount:</b> {formatCurrency(totalPrice)}</p>
+                            {totals && (
+                                <div className="order-price-breakdown">
+                                    <p>Subtotal: {formatCurrency(totals.itemsPrice)}</p>
+                                    <p>Shipping: PHP {totals.shippingPrice.toFixed(2)}</p>
+                                    <p>Tax: {formatCurrency(totals.taxPrice)}</p>
+                                    <p><b>Total:</b> {formatCurrency(totals.totalPrice)}</p>
+                                </div>
+                            )}
 
                             <hr />
 
@@ -97,15 +105,27 @@ const OrderDetails = () => {
                             <h4 className="my-4">Order Items:</h4>
 
                             <hr />
-                            <div className="cart-item my-1">
-                                {orderItems && orderItems.map(item => (
-                                    <div key={item.product} className="row my-5">
+                            <div className="cart-item my-1 order-line-items">
+                                {orderItems && orderItems.map((item, index) => {
+                                    const populatedProduct = item.product && typeof item.product === 'object'
+                                        ? item.product
+                                        : null
+                                    const productId = populatedProduct
+                                        ? (populatedProduct.isDeleted ? null : populatedProduct._id)
+                                        : item.product
+
+                                    return (
+                                    <div key={item._id || `${productId || item.name}-${index}`} className="row my-5">
                                         <div className="col-4 col-lg-2">
-                                            <img src={item.image} alt={item.name} height="45" width="65" />
+                                            {productId && !populatedProduct?.isDeleted
+                                                ? <Link to={`/product/${productId}`} aria-label={`View ${item.name}`}><img src={item.image} alt={item.name} height="45" width="65" /></Link>
+                                                : <img src={item.image} alt={item.name} height="45" width="65" />}
                                         </div>
 
                                         <div className="col-5 col-lg-5">
-                                            <Link to={`/products/${item.product}`}>{item.name}</Link>
+                                            {productId && !populatedProduct?.isDeleted
+                                                ? <Link to={`/product/${productId}`}>{item.name}</Link>
+                                                : <span>{item.name}</span>}
                                         </div>
 
 
@@ -117,7 +137,8 @@ const OrderDetails = () => {
                                             <p>{item.quantity} Piece(s)</p>
                                         </div>
                                     </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                             <hr />
                         </div>

@@ -18,7 +18,7 @@ These are all 31 requirements from the functional requirements document.
 3. Shopping cart
 3.1 Add to cart, limited by stock
 3.2 Change quantity or remove
-3.3 Subtotal, shipping fee, grand total
+3.3 Subtotal, fixed PHP 100 shipping fee per order, grand total
 
 4. Orders
 4.1 Checkout (address and payment method)

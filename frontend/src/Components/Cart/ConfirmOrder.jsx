@@ -66,7 +66,7 @@ const ConfirmOrder = () => {
                         <h4>Order Summary</h4>
                         <hr />
                         <p>Subtotal: <span className="order-summary-values">{formatCurrency(itemsPrice)}</span></p>
-                        <p>Shipping: <span className="order-summary-values">{shippingPrice === 0 ? 'FREE' : formatCurrency(shippingPrice)}</span></p>
+                        <p>Shipping: <span className="order-summary-values">PHP {shippingPrice.toFixed(2)}</span></p>
                         <p>Tax: <span className="order-summary-values">{formatCurrency(taxPrice)}</span></p>
 
                         <hr />

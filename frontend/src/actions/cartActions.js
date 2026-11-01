@@ -1,10 +1,10 @@
-import axios from 'axios'
+import api from '../Utils/api'
 import { ADD_TO_CART, REMOVE_ITEM_CART, SAVE_SHIPPING_INFO, CLEAR_CART } from '../constants/cartConstants'
 import { errMsg } from '../Utils/helpers'
 
 export const addItemToCart = (id, quantity) => async (dispatch, getState) => {
     try {
-        const { data } = await axios.get(`${import.meta.env.VITE_API}/product/${id}`)
+        const { data } = await api.get(`${import.meta.env.VITE_API}/product/${id}`)
         const product = data.product
         const stock = Math.max(0, Number(product.stock) || 0)
 
@@ -61,4 +61,3 @@ export const clearCart = () => async (dispatch) => {
         type: CLEAR_CART,
     })
 }
-

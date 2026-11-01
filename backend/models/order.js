@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const { SHIPPING_PRICE } = require('../utils/orderPricing')
 
 const orderSchema = mongoose.Schema({
     orderReference: {
@@ -89,7 +90,7 @@ const orderSchema = mongoose.Schema({
     shippingPrice: {
         type: Number,
         required: true,
-        default: 0.0
+        default: SHIPPING_PRICE
     },
     totalPrice: {
         type: Number,
@@ -107,6 +108,13 @@ const orderSchema = mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date
     }
 
 })

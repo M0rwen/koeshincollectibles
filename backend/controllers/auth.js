@@ -3,6 +3,7 @@ const crypto = require('crypto')
 const cloudinary = require('cloudinary')
 const sendEmail = require('../utils/sendEmail')
 const sendToken = require('../utils/jwtToken');
+const getAuthCookieOptions = require('../utils/authCookieOptions')
 const admin = require('../config/firebaseAdmin');
 
 // ─── Google / Firebase login ──────────────────────────────────────────────────
@@ -25,7 +26,7 @@ exports.firebaseLogin = async (req, res) => {
     const { uid, email, name, picture } = decoded;
 
     // Try to find an existing user with this email
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email, isDeleted: { $ne: true } });
 
     if (!user) {
         // First-time Google sign-in: create a new account with safe defaults.
@@ -109,7 +110,7 @@ exports.loginUser = async (req, res, next) => {
     const isEmail = identifier.includes('@');
     const query = isEmail ? { email: identifier } : { username: identifier };
 
-    let user = await User.findOne(query).select('+password')
+    let user = await User.findOne({ ...query, isDeleted: { $ne: true } }).select('+password')
     if (!user) {
         return res.status(401).json({ message: 'Invalid username/email or password' })
     }
@@ -129,12 +130,12 @@ exports.loginUser = async (req, res, next) => {
     //     token,
     //     user
     // });
-    user = await User.findOne(query)
+    user = await User.findOne({ ...query, isDeleted: { $ne: true } })
     sendToken(user, 200, res)
 }
 
 exports.forgotPassword = async (req, res, next) => {
-    const user = await User.findOne({ email: req.body.email });
+    const user = await User.findOne({ email: req.body.email, isDeleted: { $ne: true } });
     if (!user) {
         return res.status(404).json({ error: 'User not found with this email' })
 
@@ -172,7 +173,8 @@ exports.resetPassword = async (req, res, next) => {
     const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex')
     const user = await User.findOne({
         resetPasswordToken,
-        resetPasswordExpire: { $gt: Date.now() }
+        resetPasswordExpire: { $gt: Date.now() },
+        isDeleted: { $ne: true }
     })
     console.log(user)
 
@@ -201,8 +203,10 @@ exports.resetPassword = async (req, res, next) => {
 }
 
 exports.getUserProfile = async (req, res, next) => {
-    const user = await User.findById(req.user.id);
-    console.log(user)
+    const user = await User.findOne({ _id: req.user.id, isDeleted: { $ne: true } });
+    if (!user) {
+        return res.status(401).json({ message: 'User session is no longer active' })
+    }
 
     return res.status(200).json({
         success: true,
@@ -221,7 +225,7 @@ exports.updateProfile = async (req, res, next) => {
 
     // Update avatar
     if (req.body.avatar !== '') {
-        let user = await User.findById(req.user.id)
+        let user = await User.findOne({ _id: req.user.id, isDeleted: { $ne: true } })
         const image_id = user.avatar?.public_id;
         // Only destroy if it's a real Cloudinary image, not a Google photo
         if (image_id && !image_id.startsWith('google:')) {
@@ -239,10 +243,12 @@ exports.updateProfile = async (req, res, next) => {
             url: result.secure_url
         }
     }
-    const user = await User.findByIdAndUpdate(req.user.id, newUserData, {
+    const user = await User.findOneAndUpdate(
+        { _id: req.user.id, isDeleted: { $ne: true } },
+        newUserData, {
         new: true,
         runValidators: true,
-    })
+        })
     if (!user) {
         return res.status(401).json({ message: 'User Not Updated' })
     }
@@ -255,7 +261,10 @@ exports.updateProfile = async (req, res, next) => {
 
 exports.updatePassword = async (req, res, next) => {
     console.log(req.body.password)
-    const user = await User.findById(req.user.id).select('+password');
+    const user = await User.findOne({ _id: req.user.id, isDeleted: { $ne: true } }).select('+password');
+    if (!user) {
+        return res.status(401).json({ message: 'User session is no longer active' })
+    }
     // Check previous user password
     const isMatched = await user.comparePassword(req.body.oldPassword)
     if (!isMatched) {
@@ -274,7 +283,10 @@ exports.updatePassword = async (req, res, next) => {
 }
 
 exports.allUsers = async (req, res, next) => {
-    const users = await User.find();
+    const filter = req.query.deleted === 'true'
+        ? { isDeleted: true }
+        : { isDeleted: { $ne: true } }
+    const users = await User.find(filter);
     res.status(200).json({
         success: true,
         users
@@ -282,26 +294,61 @@ exports.allUsers = async (req, res, next) => {
 }
 
 exports.deleteUser = async (req, res, next) => {
-    const user = await User.findById(req.params.id);
+    const user = await User.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
 
     if (!user) {
-        return res.status(401).json({ message: `User does not found with id: ${req.params.id}` })
+        return res.status(404).json({ message: `User not found with id: ${req.params.id}` })
         // return next(new ErrorHandler(`User does not found with id: ${req.params.id}`))
     }
 
-    // Only remove from Cloudinary if it's a real Cloudinary image (not a Google avatar)
-    const image_id = user.avatar?.public_id;
-    if (image_id && !image_id.startsWith('google:')) {
-        await cloudinary.v2.uploader.destroy(image_id);
-    }
-    await User.findByIdAndDelete(req.params.id);
+    user.originalEmail = user.email
+    user.originalUsername = user.username
+    user.email = `deleted+${user._id}@deleted.invalid`
+    user.username = `deleted-${user._id}`
+    user.isDeleted = true
+    user.deletedAt = new Date()
+    await user.save({ validateBeforeSave: false })
     return res.status(200).json({
         success: true,
     })
 }
 
+exports.restoreUser = async (req, res) => {
+    const user = await User.findOne({ _id: req.params.id, isDeleted: true })
+    if (!user) {
+        return res.status(404).json({ success: false, message: 'Deleted user not found' })
+    }
+    if (!user.originalEmail || !user.originalUsername) {
+        return res.status(409).json({ success: false, message: 'Original email or username is unavailable for restoration' })
+    }
+
+    const conflict = await User.findOne({
+        _id: { $ne: user._id },
+        isDeleted: { $ne: true },
+        $or: [
+            { email: user.originalEmail },
+            { username: user.originalUsername }
+        ]
+    })
+    if (conflict) {
+        return res.status(409).json({
+            success: false,
+            message: 'The original email or username is now in use. Resolve the conflict before restoring this user.'
+        })
+    }
+
+    user.email = user.originalEmail
+    user.username = user.originalUsername
+    user.originalEmail = undefined
+    user.originalUsername = undefined
+    user.isDeleted = false
+    user.deletedAt = undefined
+    await user.save({ validateBeforeSave: false })
+    return res.status(200).json({ success: true, user })
+}
+
 exports.getUserDetails = async (req, res, next) => {
-    const user = await User.findById(req.params.id);
+    const user = await User.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
 
     if (!user) {
         return res.status(400).json({ message: `User does not found with id: ${req.params.id}` })
@@ -321,22 +368,24 @@ exports.updateUser = async (req, res, next) => {
         role: req.body.role
     }
 
-    const user = await User.findByIdAndUpdate(req.params.id, newUserData, {
+    const user = await User.findOneAndUpdate(
+        { _id: req.params.id, isDeleted: { $ne: true } },
+        newUserData, {
         new: true,
         runValidators: true,
         // useFindAndModify: false
-    })
+        })
 
+    if (!user) {
+        return res.status(404).json({ success: false, message: 'Active user not found' })
+    }
     return res.status(200).json({
         success: true
     })
 }
 
 exports.logout = async (req, res, next) => {
-    res.cookie('token', null, {
-        expires: new Date(Date.now()),
-        httpOnly: true
-    })
+    res.cookie('token', null, getAuthCookieOptions(new Date(0)))
 
     return res.status(200).json({
         success: true,

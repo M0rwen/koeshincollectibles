@@ -6,13 +6,14 @@ import MetaData from '../Layout/MetaData'
 import CheckoutSteps from './CheckoutSteps'
 import { createOrder, clearErrors } from '../../actions/orderActions'
 import { clearCart } from '../../actions/cartActions'
-import { formatCurrency } from '../../Utils/helpers'
+import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
 
 const Payment = () => {
     const dispatch = useDispatch()
     const navigate = useNavigate()
     const { cartItems, shippingInfo } = useSelector(state => state.cart)
     const { error, loading } = useSelector(state => state.newOrder)
+    const totals = calculateOrderTotals(cartItems)
     const [orderInfo] = useState(() => JSON.parse(sessionStorage.getItem('orderInfo') || 'null'))
     const [paymentMethod, setPaymentMethod] = useState(() => (
         sessionStorage.getItem('paymentMethod') === 'Card (demo only)'
@@ -92,8 +93,17 @@ const Payment = () => {
                         </label>
                     </fieldset>
                     <div className="payment-total">
+                        <span>Subtotal: {formatCurrency(totals.itemsPrice)}</span>
+                    </div>
+                    <div className="payment-total">
+                        <span>Shipping: PHP {totals.shippingPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="payment-total">
+                        <span>Tax: {formatCurrency(totals.taxPrice)}</span>
+                    </div>
+                    <div className="payment-total">
                         <span>Amount due</span>
-                        <strong>{formatCurrency(orderInfo?.totalPrice ?? 0)}</strong>
+                        <strong>{formatCurrency(totals.totalPrice)}</strong>
                     </div>
                     <button
                         id="pay_btn"

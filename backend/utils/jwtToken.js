@@ -1,24 +1,11 @@
-const sendToken = (user, statusCode, res) => {
+const getAuthCookieOptions = require('./authCookieOptions')
 
-    // Create Jwt token
+const sendToken = (user, statusCode, res) => {
     const token = user.getJwtToken();
-    // console.log("token1", token)
-    // Options for cookie
-    const isProduction = process.env.NODE_ENV === 'production';
-    const options = {
-        expires: new Date(
-            Date.now() + process.env.COOKIE_EXPIRES_TIME * 24 * 60 * 60 * 1000
-        ),
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
-    }
-    res.status(statusCode).cookie('token', token, options).json({
+    res.status(statusCode).cookie('token', token, getAuthCookieOptions()).json({
         success: true,
-        // token,
         user
     })
-
 }
 
 module.exports = sendToken;

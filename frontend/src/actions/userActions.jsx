@@ -1,4 +1,4 @@
-import axios from 'axios'
+import api from '../Utils/api'
 import {
     LOGIN_REQUEST,
     LOGIN_SUCCESS,
@@ -70,7 +70,7 @@ export const login = (identifier, password) => async (dispatch) => {
             withCredentials: true,
         }
 
-        const { data } = await axios.post(`${import.meta.env.VITE_API}/login`, { identifier, password }, config)
+        const { data } = await api.post(`${import.meta.env.VITE_API}/login`, { identifier, password }, config)
         console.log(data.user)
         dispatch({
             type: LOGIN_SUCCESS,
@@ -90,7 +90,7 @@ export const login = (identifier, password) => async (dispatch) => {
 export const loginWithGoogle = (idToken) => async (dispatch) => {
     try {
         dispatch({ type: LOGIN_REQUEST })
-        const { data } = await axios.post(
+        const { data } = await api.post(
             `${import.meta.env.VITE_API}/auth/firebase`,
             { idToken },
             { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
@@ -112,15 +112,17 @@ export const logout = () => async (dispatch) => {
             },
             withCredentials: true,
         }
-        await axios.get(`${import.meta.env.VITE_API}/logout`,config)
+        await api.get(`${import.meta.env.VITE_API}/logout`,config)
         dispatch({
             type: LOGOUT_SUCCESS,
         })
+        return true
     } catch (error) {
         dispatch({
             type: LOGOUT_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message || 'Could not contact the server to end the session.'
         })
+        return false
     }
 }
 
@@ -133,7 +135,7 @@ export const loadUser = () => async (dispatch) => {
             withCredentials: true,
         }
         dispatch({ type: LOAD_USER_REQUEST })
-        const { data } = await axios.get(`${import.meta.env.VITE_API}/me`,config)
+        const { data } = await api.get(`${import.meta.env.VITE_API}/me`,config)
         dispatch({
             type: LOAD_USER_SUCCESS,
             payload: data.user
@@ -141,7 +143,10 @@ export const loadUser = () => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: LOAD_USER_FAIL,
-            payload: error.response.data.message
+            payload: {
+                status: error.response?.status,
+                message: error.response?.data?.message || error.message || 'Could not restore your session.'
+            }
         })
     }
 }
@@ -156,7 +161,7 @@ export const updateProfile = (userData) => async (dispatch) => {
             },
             withCredentials: true,
         }
-        const { data } = await axios.put(`${import.meta.env.VITE_API}/me/update`, userData, config)
+        const { data } = await api.put(`${import.meta.env.VITE_API}/me/update`, userData, config)
         dispatch({
             type: UPDATE_PROFILE_SUCCESS,
             payload: data.success
@@ -180,7 +185,7 @@ export const updatePassword = (passwords) => async (dispatch) => {
             },
             withCredentials: true,
         }
-        const { data } = await axios.put(`${import.meta.env.VITE_API}/password/update`, passwords, config)
+        const { data } = await api.put(`${import.meta.env.VITE_API}/password/update`, passwords, config)
         dispatch({
             type: UPDATE_PASSWORD_SUCCESS,
             payload: data.success
@@ -201,7 +206,7 @@ export const forgotPassword = (email) => async (dispatch) => {
                 'Content-Type': 'application/json'
             }
         }
-        const { data } = await axios.post(`${import.meta.env.VITE_API}/password/forgot`, email, config)
+        const { data } = await api.post(`${import.meta.env.VITE_API}/password/forgot`, email, config)
         dispatch({
             type: FORGOT_PASSWORD_SUCCESS,
             payload: data.message

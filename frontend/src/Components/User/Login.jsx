@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useFormik } from 'formik'
 
 import Loader from '../Layout/Loader'
 import MetaData from '../Layout/MetaData'
@@ -7,6 +8,7 @@ import { toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useDispatch, useSelector } from 'react-redux'
 import { login, loginWithGoogle, clearErrors } from '../../actions/userActions'
+import { loginSchema } from '../../validation/schemas'
 
 // Firebase popup helpers
 import { signInWithPopup } from 'firebase/auth'
@@ -14,19 +16,17 @@ import { auth, googleProvider } from '../../firebase'
 
 const Login = () => {
     const { isAuthenticated, error, loading } = useSelector(state => state.auth)
-    const [identifier, setIdentifier] = useState('')
-    const [password, setPassword] = useState('')
     let navigate = useNavigate()
     let location = useLocation()
     const dispatch = useDispatch()
+    const formik = useFormik({
+        initialValues: { identifier: '', password: '' },
+        validationSchema: loginSchema,
+        validateOnMount: true,
+        onSubmit: values => dispatch(login(values.identifier.trim(), values.password))
+    })
 
     // ── Normal username/password submit ───────────────────────────────────────
-    const submitHandler = (e) => {
-        e.preventDefault()
-        if (!identifier.trim() || !password.trim()) return
-        dispatch(login(identifier.trim(), password))
-    }
-
     // ── Google sign-in popup ──────────────────────────────────────────────────
     const googleHandler = async () => {
         try {
@@ -66,7 +66,7 @@ const Login = () => {
 
                     <div className="row wrapper">
                         <div className="col-10 col-lg-5">
-                            <form className="shadow-lg" onSubmit={submitHandler}>
+                            <form className="shadow-lg" onSubmit={formik.handleSubmit} noValidate>
                                 <h1 className="mb-3">Login</h1>
 
                                 <div className="form-group">
@@ -74,10 +74,18 @@ const Login = () => {
                                     <input
                                         type="text"
                                         id="identifier_field"
+                                        name="identifier"
                                         className="form-control"
-                                        value={identifier}
-                                        onChange={(e) => setIdentifier(e.target.value)}
+                                        autoComplete="username"
+                                        value={formik.values.identifier}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        aria-invalid={Boolean(formik.touched.identifier && formik.errors.identifier)}
+                                        aria-describedby={formik.touched.identifier && formik.errors.identifier ? 'identifier_error' : undefined}
                                     />
+                                    {formik.touched.identifier && formik.errors.identifier && (
+                                        <div className="field-error" id="identifier_error" role="alert">{formik.errors.identifier}</div>
+                                    )}
                                 </div>
 
                                 <div className="form-group">
@@ -86,9 +94,17 @@ const Login = () => {
                                         type="password"
                                         id="password_field"
                                         className="form-control"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
+                                        name="password"
+                                        autoComplete="current-password"
+                                        value={formik.values.password}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        aria-invalid={Boolean(formik.touched.password && formik.errors.password)}
+                                        aria-describedby={formik.touched.password && formik.errors.password ? 'password_error' : undefined}
                                     />
+                                    {formik.touched.password && formik.errors.password && (
+                                        <div className="field-error" id="password_error" role="alert">{formik.errors.password}</div>
+                                    )}
                                 </div>
 
                                 <Link to="/password/forgot" className="float-right mb-4">Forgot Password?</Link>
@@ -97,8 +113,9 @@ const Login = () => {
                                     id="login_button"
                                     type="submit"
                                     className="btn btn-block py-3"
+                                    disabled={!formik.isValid || formik.isSubmitting || loading}
                                 >
-                                    LOGIN
+                                    {formik.isSubmitting || loading ? 'LOGGING IN…' : 'LOGIN'}
                                 </button>
 
                                 {/* ── Google button ── */}

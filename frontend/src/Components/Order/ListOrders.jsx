@@ -7,21 +7,13 @@ import 'react-toastify/dist/ReactToastify.css';
 // import { getToken } from '../../Utils/helpers'
 import { useDispatch, useSelector } from 'react-redux'
 import { myOrders } from '../../actions/orderActions'
-import { formatCurrency } from '../../Utils/helpers'
-
-import {
-
-    Button
-} from '@mui/material'
-
-
-import { DataGrid, } from '@mui/x-data-grid'
+import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
 
 const ListOrders = () => {
     // const [loading, setLoading] = useState(true)
     // const [error, setError] = useState('')
     const dispatch = useDispatch();
-    const { loading, error, orders } = useSelector(state => state.myOrders);
+    const { loading, error, orders = [] } = useSelector(state => state.myOrders);
     // const [myOrdersList, setMyOrdersList] = useState([])
 
     // const myOrders = async () => {
@@ -49,81 +41,48 @@ const ListOrders = () => {
         }
     }, [error, dispatch])
 
-    const columns = [
-        {
-            field: 'id',
-            headerName: 'Order ID',
-            flex: 1,
-            renderCell: (params) => <span style={{ wordBreak: 'break-all' }}>{params.value}</span>
-        },
-        {
-            field: 'numOfItems',
-            headerName: 'Num of Items',
-            type: 'number',
-            width: 130,
-            align: 'right',
-            headerAlign: 'right'
-        },
-        {
-            field: 'amount',
-            headerName: 'Amount',
-            width: 120,
-            align: 'right',
-            headerAlign: 'right'
-        },
-        {
-            field: 'status',
-            headerName: 'Status',
-            width: 160,
-            renderCell: (params) =>
-                (params.value && String(params.value).includes('Delivered'))
-                    ? <span style={{ color: 'green' }}>{params.value}</span>
-                    : <span style={{ color: 'red' }}>{params.value}</span>
-        },
-        {
-            field: 'actions',
-            headerName: 'Actions',
-            width: 120,
-            sortable: false,
-            filterable: false,
-            renderCell: (params) => (
-                <Button
-                    component={Link}
-                    to={`/order/${params.id}`}
-                    variant="contained"
-                    size="small"
-                >
-                    <i className="fa fa-eye" />
-                </Button>
-            )
-        }
-    ];
-
-    const rows = orders.map(order => ({
-        id: order._id,
-        numOfItems: order.orderItems.length,
-        amount: formatCurrency(order.totalPrice),
-        status: order.orderStatus || ''
-    }));
-
-
-
     return (
         <>
             <MetaData title={'My Orders'} />
             <h1 className="my-5">My Orders</h1>
             {loading ? <Loader /> : (
-                <div style={{ width: '100%' }}>
-                    <DataGrid
-                        rows={rows}
-                        columns={columns}
+                <div className="customer-orders-list">
+                    {orders.map(order => {
+                        const items = order.orderItems || []
+                        const reference = order.orderReference || order._id
+                        const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'
+                        const delivered = String(order.orderStatus || '').includes('Delivered')
+                        const totals = calculateOrderTotals(items)
 
-                        pageSize={5}
-                        rowsPerPageOptions={[5, 10, 25]}
-                        disableSelectionOnClick
-                        getRowId={(row) => row.id}
-                        showToolbar
-                    />
+                        return (
+                            <article className="customer-order-row" key={order._id}>
+                                <div className="customer-order-reference">
+                                    <span>Order reference</span>
+                                    <strong>{reference}</strong>
+                                </div>
+                                <div className="customer-order-items">
+                                    {items.slice(0, 2).map((item, index) => (
+                                        <div className="customer-order-item" key={`${item.product}-${index}`}>
+                                            <img src={item.image} alt="" loading="lazy" />
+                                            <span className="customer-order-item-name">{item.name}</span>
+                                            <span className="customer-order-item-quantity">× {item.quantity}</span>
+                                        </div>
+                                    ))}
+                                    {items.length > 2 && <span className="customer-order-more">+{items.length - 2} more</span>}
+                                    {!items.length && <span className="customer-order-more">No item details</span>}
+                                </div>
+                                <div className="customer-order-meta">
+                                    <span className={delivered ? 'customer-order-status is-delivered' : 'customer-order-status'}>
+                                        {order.orderStatus || 'Processing'}
+                                    </span>
+                                    <strong>{formatCurrency(totals.totalPrice)}</strong>
+                                    <time>{date}</time>
+                                </div>
+                                <Link className="customer-order-view" to={`/order/${order._id}`}>View</Link>
+                            </article>
+                        )
+                    })}
+                    {!orders.length && <p className="customer-orders-empty">No orders yet.</p>}
                 </div>
             )}
         </>

@@ -12,6 +12,7 @@ const {
     updatePassword,
     allUsers,
     deleteUser,
+    restoreUser,
     getUserDetails,
     updateUser,
     logout,
@@ -29,6 +30,7 @@ router.get('/me', isAuthenticatedUser, getUserProfile)
 router.put('/me/update', isAuthenticatedUser, upload.single("avatar"), updateProfile)
 router.put('/password/update', isAuthenticatedUser, updatePassword)
 router.get('/admin/users', isAuthenticatedUser, authorizeRoles('admin'), allUsers)
+router.put('/admin/user/:id/restore', isAuthenticatedUser, authorizeRoles('admin'), restoreUser)
 
 router.route('/admin/user/:id').get(isAuthenticatedUser, authorizeRoles('admin'), getUserDetails).delete(isAuthenticatedUser, authorizeRoles('admin'), deleteUser).put(isAuthenticatedUser, authorizeRoles('admin'), updateUser)
 router.get('/logout', logout);

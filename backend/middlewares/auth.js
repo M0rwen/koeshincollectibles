@@ -14,6 +14,9 @@ exports.isAuthenticatedUser = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
     req.user = await User.findById(decoded.id);
+    if (!req.user || req.user.isDeleted === true) {
+        return res.status(401).json({ message: 'Your account is unavailable. Please contact support.' })
+    }
 
     next()
 };

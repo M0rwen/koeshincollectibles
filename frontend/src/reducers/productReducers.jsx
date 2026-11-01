@@ -66,7 +66,13 @@ export const productsReducer = (state = { products: [] }, action) => {
                 ...state,
                 loading: false,
                 products: action.payload
-
+            }
+        case UPDATE_PRODUCT_SUCCESS:
+            return {
+                ...state,
+                products: state.products.map(product =>
+                    product._id === action.payload?._id ? action.payload : product
+                )
             }
         case ALL_PRODUCTS_FAIL:
             if (action.meta?.queryKey !== state.queryKey) return state
@@ -101,19 +107,30 @@ export const productDetailsReducer = (state = { product: {} }, action) => {
         case PRODUCT_DETAILS_REQUEST:
             return {
                 ...state,
-                loading: true
+                loading: true,
+                product: {},
+                error: null
             }
 
         case PRODUCT_DETAILS_SUCCESS:
             return {
                 ...state,
                 loading: false,
-                product: action.payload
+                product: action.payload,
+                error: null
+            }
+
+        case UPDATE_PRODUCT_SUCCESS:
+            return {
+                ...state,
+                product: state.product?._id === action.payload?._id ? action.payload : state.product
             }
 
         case PRODUCT_DETAILS_FAIL:
             return {
                 ...state,
+                loading: false,
+                product: {},
                 error: action.payload
             }
 
@@ -172,7 +189,8 @@ export const productReducer = (state = {}, action) => {
         case UPDATE_PRODUCT_REQUEST:
             return {
                 ...state,
-                loading: true
+                loading: true,
+                ...(action.type === UPDATE_PRODUCT_REQUEST ? { isUpdated: false } : {})
             }
 
         case DELETE_PRODUCT_SUCCESS:
@@ -186,14 +204,21 @@ export const productReducer = (state = {}, action) => {
             return {
                 ...state,
                 loading: false,
-                isUpdated: action.payload
+                isUpdated: true
             }
 
 
         case DELETE_PRODUCT_FAIL:
+            return {
+                ...state,
+                loading: false,
+                error: action.payload
+            }
         case UPDATE_PRODUCT_FAIL:
             return {
                 ...state,
+                loading: false,
+                isUpdated: false,
                 error: action.payload
             }
 

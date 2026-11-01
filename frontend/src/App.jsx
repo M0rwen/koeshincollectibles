@@ -4,6 +4,8 @@ import './App.css'
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { ToastContainer, } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useDispatch } from 'react-redux'
+import { loadUser } from './actions/userActions'
 
 
 
@@ -53,6 +55,7 @@ const CatalogPage = () => {
 }
 
 function App() {
+  const dispatch = useDispatch()
   const [theme, setTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem('koeshin-theme')
     const initialTheme = savedTheme === 'light' || savedTheme === 'dark'
@@ -70,6 +73,10 @@ function App() {
       theme === 'dark' ? '#1b1621' : '#fbf8f3'
     )
   }, [theme])
+
+  useEffect(() => {
+    dispatch(loadUser())
+  }, [dispatch])
 
   // const [state, setState] = useState({
   //   cartItems: localStorage.getItem('cartItems')
@@ -165,7 +172,7 @@ function App() {
           <Route path="/register" element={<Register exact="true" />} />
           <Route path="/password/forgot" element={<ForgotPassword />} exact="true" />
           <Route path="/password/reset/:token" element={<NewPassword />} exact="true" />
-          <Route path="/me" element={<Profile />} exact="true" />
+          <Route path="/me" element={<ProtectedRoute><Profile /></ProtectedRoute>} exact="true" />
           <Route path="/me/update" element={<UpdateProfile />} exact="true" />
           <Route path="/password/update" element={<UpdatePassword />} />
           {/* <Route path="/cart" element={<Cart cartItems={state.cartItems} addItemToCart={addItemToCart} removeItemFromCart={removeItemFromCart} />} exact="true" /> */}
@@ -179,7 +186,7 @@ function App() {
           <Route path="/confirm" element={<ConfirmOrder />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/success" element={<OrderSuccess />} />
-          <Route path="/orders/me" element={<ListOrders />} />
+          <Route path="/orders/me" element={<ProtectedRoute isCustomerOnly><ListOrders /></ProtectedRoute>} />
           <Route path="/order/:id" element={<OrderDetails />} />
           {/* <Route path="/dashboard" element={<Dashboard />} /> */}
 
