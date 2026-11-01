@@ -3,6 +3,13 @@ const Product = require('../models/product');
 const sendEmail = require('../utils/sendEmail');
 const User = require('../models/user');
 
+const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+})[character])
 
 // Create a new order   =>  /api/v1/order/new
 exports.newOrder = async (req, res, next) => {
@@ -32,6 +39,31 @@ exports.newOrder = async (req, res, next) => {
     })
     order.orderReference = `KC-${order._id.toString().toUpperCase()}`
     await order.save()
+
+    const paymentNote = paymentMethod === 'Cash on Delivery'
+        ? 'Payment is due on delivery.'
+        : 'This demo order did not process a card payment.'
+    const emailItems = order.orderItems.map(item => (
+        `${escapeHtml(item.name)} (Qty ${item.quantity}) — PHP ${Number(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+    )).join('<br>')
+
+    try {
+        await sendEmail({
+            email: req.user.email,
+            subject: `Koeshin Collectibles — Order ${order.orderReference} confirmed`,
+            message: `
+                <strong>Order confirmed</strong><br>
+                Hi ${escapeHtml(req.user.name)},<br><br>
+                Thank you for your order ${escapeHtml(order.orderReference)}.<br><br>
+                ${emailItems}<br><br>
+                Total: PHP ${Number(order.totalPrice).toLocaleString('en-PH', { minimumFractionDigits: 2 })}<br>
+                ${paymentNote}<br><br>
+                You can view your order in your Koeshin Collectibles account.
+            `
+        })
+    } catch (emailError) {
+        console.error('Order confirmation email failed:', emailError)
+    }
 
     res.status(200).json({
         success: true,
