@@ -1,5 +1,9 @@
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import orderPricing from '../../../shared/order-pricing.json'
+
+export const SHIPPING_PRICE = orderPricing.shippingPrice
+const TAX_RATE = orderPricing.taxRate
 
 export const formatCurrency = (amount) => new Intl.NumberFormat('en-PH', {
     style: 'currency',
@@ -13,8 +17,8 @@ export const calculateOrderTotals = (cartItems) => {
         if (!Number.isFinite(price) || !Number.isFinite(quantity)) return total
         return total + Math.round(price * 100) * Math.max(0, quantity)
     }, 0)
-    const shippingPriceCents = itemsPriceCents > 200000 ? 0 : 15000
-    const taxPriceCents = Math.round(itemsPriceCents * 0.05)
+    const shippingPriceCents = SHIPPING_PRICE * 100
+    const taxPriceCents = Math.round(itemsPriceCents * TAX_RATE)
 
     return {
         itemsPrice: itemsPriceCents / 100,

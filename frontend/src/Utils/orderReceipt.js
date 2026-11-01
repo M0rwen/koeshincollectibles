@@ -1,3 +1,5 @@
+import { calculateOrderTotals } from './helpers'
+
 const colors = {
     lavender: [224, 222, 239],
     cocoa: [56, 45, 61],
@@ -30,6 +32,7 @@ const loadMascot = async () => {
 }
 
 export const createOrderReceipt = async (order) => {
+    const totals = calculateOrderTotals(order.orderItems || [])
     const { jsPDF } = await import('jspdf')
     const pdf = new jsPDF({ compress: true })
     const pageWidth = pdf.internal.pageSize.getWidth()
@@ -169,12 +172,12 @@ export const createOrderReceipt = async (order) => {
         y += emphasis ? 9 : 6
     }
 
-    drawSummaryLine('Subtotal', phpAmount(order.itemsPrice))
-    drawSummaryLine('Shipping', Number(order.shippingPrice) === 0 ? 'FREE' : phpAmount(order.shippingPrice))
-    drawSummaryLine('Tax', phpAmount(order.taxPrice))
+    drawSummaryLine('Subtotal', phpAmount(totals.itemsPrice))
+    drawSummaryLine('Shipping', phpAmount(totals.shippingPrice))
+    drawSummaryLine('Tax', phpAmount(totals.taxPrice))
     pdf.setFillColor(...colors.lavender)
     pdf.roundedRect(pageWidth - 90, y - 4, 75, 13, 1.5, 1.5, 'F')
-    drawSummaryLine('TOTAL', phpAmount(order.totalPrice), true)
+    drawSummaryLine('TOTAL', phpAmount(totals.totalPrice), true)
 
     y += 5
     pdf.setFont('times', 'italic')

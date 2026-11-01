@@ -1,5 +1,30 @@
 const mongoose = require('mongoose')
 
+const reviewSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    name: {
+        type: String,
+        required: true
+    },
+    rating: {
+        type: Number,
+        required: true
+    },
+    comment: {
+        type: String,
+        required: true
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: Date
+})
+
 const productSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -67,27 +92,7 @@ const productSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    reviews: [
-        {
-            user: {
-                type: mongoose.Schema.ObjectId,
-                ref: 'User',
-                required: true
-            },
-            name: {
-                type: String,
-                required: true
-            },
-            rating: {
-                type: Number,
-                required: true
-            },
-            comment: {
-                type: String,
-                required: true
-            }
-        }
-    ],
+    reviews: [reviewSchema],
     user: {
         type: mongoose.Schema.ObjectId,
         ref: 'User',
@@ -96,6 +101,20 @@ const productSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date
+    }
+})
+
+productSchema.set('toJSON', {
+    transform: (_document, value) => {
+        value.reviews = (value.reviews || []).filter(review => review.isDeleted !== true)
+        return value
     }
 })
 

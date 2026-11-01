@@ -89,13 +89,13 @@ const Cart = () => {
                                 <h4>Order Summary</h4>
                                 <hr />
                                 <p>Subtotal: <span className="order-summary-values">{formatCurrency(itemsPrice)}</span></p>
-                                <p>Shipping: <span className="order-summary-values">{shippingPrice === 0 ? 'FREE' : formatCurrency(shippingPrice)}</span></p>
+                                <p>Shipping: <span className="order-summary-values">PHP {shippingPrice.toFixed(2)}</span></p>
                                 <p>Estimated tax: <span className="order-summary-values">{formatCurrency(taxPrice)}</span></p>
 
 
                                 <hr />
                                 <p className="cart-grand-total">Grand total: <span className="order-summary-values">{formatCurrency(totalPrice)}</span></p>
-                                <p className="shipping-hint">Free shipping on orders over {formatCurrency(2000)}.</p>
+                                <p className="shipping-hint">A flat shipping fee applies to each order.</p>
                                 <hr />
                                 <button id="checkout_btn" className="btn btn-primary btn-block" onClick={checkoutHandler}>Check out</button>
                                 {/*<button id="checkout_btn" className="btn btn-primary btn-block" >Check out</button>*/}

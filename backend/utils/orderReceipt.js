@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const { jsPDF } = require('jspdf')
+const { calculateOrderTotals } = require('./orderPricing')
 
 const colors = {
     lavender: [224, 222, 239],
@@ -28,6 +29,7 @@ const paymentStatus = order => {
 }
 
 const createOrderReceiptPdf = async order => {
+    const totals = calculateOrderTotals(order.orderItems || [])
     const pdf = new jsPDF({ compress: true })
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
@@ -170,12 +172,12 @@ const createOrderReceiptPdf = async order => {
         y += emphasis ? 9 : 6
     }
 
-    drawSummaryLine('Subtotal', phpAmount(order.itemsPrice))
-    drawSummaryLine('Shipping', Number(order.shippingPrice) === 0 ? 'FREE' : phpAmount(order.shippingPrice))
-    drawSummaryLine('Tax', phpAmount(order.taxPrice))
+    drawSummaryLine('Subtotal', phpAmount(totals.itemsPrice))
+    drawSummaryLine('Shipping', phpAmount(totals.shippingPrice))
+    drawSummaryLine('Tax', phpAmount(totals.taxPrice))
     pdf.setFillColor(...colors.lavender)
     pdf.roundedRect(pageWidth - 90, y - 4, 75, 13, 1.5, 1.5, 'F')
-    drawSummaryLine('TOTAL', phpAmount(order.totalPrice), true)
+    drawSummaryLine('TOTAL', phpAmount(totals.totalPrice), true)
 
     y += 5
     pdf.setFont('times', 'italic')

@@ -107,10 +107,10 @@ export const newProduct = (productData) => async (dispatch) => {
     }
 }
 
-export const getAdminProducts = () => async (dispatch) => {
+export const getAdminProducts = (deleted = false) => async (dispatch) => {
     try {
         dispatch({ type: ADMIN_PRODUCTS_REQUEST })
-        const { data } = await api.get(`${import.meta.env.VITE_API}/admin/products`, {
+        const { data } = await api.get(`${import.meta.env.VITE_API}/admin/products${deleted ? '?deleted=true' : ''}`, {
             //AxiosRequestConfig parameter
             withCredentials: true //correct
         })
@@ -220,10 +220,12 @@ export const bulkDeleteProducts = (ids) => async (dispatch) => {
             type: BULK_DELETE_PRODUCTS_SUCCESS,
             payload: data
         })
+        return true
     } catch (error) {
         dispatch({
             type: BULK_DELETE_PRODUCTS_FAIL,
             payload: error.response?.data?.message || error.message
         })
+        return false
     }
 }

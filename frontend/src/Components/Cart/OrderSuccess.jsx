@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
 import { downloadOrderReceipt } from '../../Utils/orderReceipt'
+import { calculateOrderTotals } from '../../Utils/helpers'
+import { formatCurrency } from '../../Utils/helpers'
 
 const OrderSuccess = () => {
     const receipt = JSON.parse(sessionStorage.getItem('lastOrderReceipt') || 'null')
+    const totals = receipt ? calculateOrderTotals(receipt.orderItems || []) : null
     return (
         <>
 
@@ -14,6 +17,14 @@ const OrderSuccess = () => {
                     <img className="my-5 img-fluid d-block mx-auto" src="/images/order_success.png" alt="Order Success" width="200" height="200" />
 
                     <h2>Your Order has been placed successfully.</h2>
+                    {totals && (
+                        <div className="order-success-summary">
+                            <p>Subtotal: {formatCurrency(totals.itemsPrice)}</p>
+                            <p>Shipping: PHP {totals.shippingPrice.toFixed(2)}</p>
+                            <p>Tax: {formatCurrency(totals.taxPrice)}</p>
+                            <p><strong>Total: {formatCurrency(totals.totalPrice)}</strong></p>
+                        </div>
+                    )}
                     {receipt?.orderReference && (
                         <>
                             <p className="order-reference-label">Order reference</p>

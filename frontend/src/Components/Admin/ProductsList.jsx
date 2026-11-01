@@ -18,6 +18,7 @@ import {
 import { DELETE_PRODUCT_RESET, BULK_DELETE_PRODUCTS_RESET } from '../../constants/productConstants'
 import Table from 'react-bootstrap/Table'
 import Form from 'react-bootstrap/Form'
+import api from '../../Utils/api'
 
 const ProductsList = () => {
     const dispatch = useDispatch();
@@ -27,16 +28,14 @@ const ProductsList = () => {
     const [searchTerm, setSearchTerm] = useState('')
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
     const [currentPage, setCurrentPage] = useState(1)
+    const [showDeleted, setShowDeleted] = useState(false)
     const ITEMS_PER_PAGE = 10
 
     useEffect(() => {
-        console.log('ProductsList mounting, dispatching getAdminProducts')
-        dispatch(getAdminProducts())
-    }, [dispatch])
+        dispatch(getAdminProducts(showDeleted))
+    }, [dispatch, showDeleted])
 
     useEffect(() => {
-        console.log('State changed:', { loading, error, products, isDeleted, isBulkDeleted })
-
         if (error) {
             toast.error(error, {
                 position: 'bottom-right'
@@ -52,27 +51,24 @@ const ProductsList = () => {
         }
 
         if (isDeleted) {
-            toast.success('Product deleted successfully', {
-                position: 'bottom-right'
-            })
+            toast.success('Product moved to Deleted', { position: 'bottom-right' })
             dispatch({ type: DELETE_PRODUCT_RESET })
+            dispatch(getAdminProducts(showDeleted))
         }
 
         if (isBulkDeleted) {
-            toast.success('Products deleted successfully', {
-                position: 'bottom-right'
-            })
-            setSelectedIds([])
+            toast.success('Products moved to Deleted', { position: 'bottom-right' })
             dispatch({ type: BULK_DELETE_PRODUCTS_RESET })
+            dispatch(getAdminProducts(showDeleted))
         }
 
-    }, [error, deleteError, isDeleted, isBulkDeleted, dispatch])
+    }, [error, deleteError, isDeleted, isBulkDeleted, dispatch, showDeleted])
 
     const deleteProductHandler = (id) => {
         dispatch(deleteProduct(id))
     }
 
-    const bulkDeleteHandler = () => {
+    const bulkDeleteHandler = async () => {
         if (selectedIds.length === 0) {
             toast.error('Please select at least one product to delete', {
                 position: 'bottom-right'
@@ -80,7 +76,24 @@ const ProductsList = () => {
             return
         }
         if (window.confirm(`Are you sure you want to delete ${selectedIds.length} product(s)?`)) {
-            dispatch(bulkDeleteProducts(selectedIds))
+            const deleted = await dispatch(bulkDeleteProducts(selectedIds))
+            if (deleted) setSelectedIds([])
+        }
+    }
+
+    const toggleDeletedView = () => {
+        setSelectedIds([])
+        setCurrentPage(1)
+        setShowDeleted(value => !value)
+    }
+
+    const restoreProductHandler = async (id) => {
+        try {
+            await api.put(`${import.meta.env.VITE_API}/admin/product/${id}/restore`)
+            toast.success('Product restored successfully', { position: 'bottom-right' })
+            dispatch(getAdminProducts(true))
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Unable to restore product', { position: 'bottom-right' })
         }
     }
 
@@ -159,6 +172,13 @@ const ProductsList = () => {
                         ) : (
                             <>
                                 <div className="d-flex justify-content-between align-items-center mb-3">
+                                    <button
+                                        type="button"
+                                        className={`btn ${showDeleted ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                        onClick={toggleDeletedView}
+                                    >
+                                        {showDeleted ? 'Show Active Products' : 'Show Deleted Products'}
+                                    </button>
                                     <Form.Control
                                         type="text"
                                         placeholder="Search products..."
@@ -166,25 +186,27 @@ const ProductsList = () => {
                                         onChange={(e) => handleSearch(e.target.value)}
                                         style={{ width: '300px' }}
                                     />
-                                    <button 
-                                        className="btn btn-danger" 
-                                        onClick={bulkDeleteHandler}
-                                        disabled={selectedIds.length === 0}
-                                    >
-                                        Delete Selected ({selectedIds.length})
-                                    </button>
+                                    {!showDeleted && (
+                                        <button
+                                            className="btn btn-danger"
+                                            onClick={bulkDeleteHandler}
+                                            disabled={selectedIds.length === 0}
+                                        >
+                                            Delete Selected ({selectedIds.length})
+                                        </button>
+                                    )}
                                 </div>
                                 
                                 <Table striped bordered hover responsive>
                                     <thead>
                                         <tr>
-                                            <th style={{ width: '50px' }}>
+                                            {!showDeleted && <th style={{ width: '50px' }}>
                                                 <Form.Check
                                                     type="checkbox"
                                                     checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedIds.includes(p._id))}
                                                     onChange={handleSelectAll}
                                                 />
-                                            </th>
+                                            </th>}
                                             <th onClick={() => handleSort('_id')} style={{ cursor: 'pointer' }}>
                                                 ID {sortConfig.key === '_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                             </th>
@@ -203,24 +225,28 @@ const ProductsList = () => {
                                     <tbody>
                                         {paginatedProducts.map(product => (
                                             <tr key={product._id}>
-                                                <td>
+                                                {!showDeleted && <td>
                                                     <Form.Check
                                                         type="checkbox"
                                                         checked={selectedIds.includes(product._id)}
                                                         onChange={() => handleSelectOne(product._id)}
                                                     />
-                                                </td>
+                                                </td>}
                                                 <td style={{ wordBreak: 'break-all', maxWidth: '200px' }}>{product._id}</td>
                                                 <td>{product.name}</td>
                                                 <td>{formatCurrency(product.price)}</td>
                                                 <td>{product.stock}</td>
                                                 <td>
-                                                    <Link to={`/admin/product/${product._id}`} className="btn btn-primary py-1 px-2">
-                                                        <i className="fa fa-pencil"></i>
-                                                    </Link>
-                                                    <button className="btn btn-danger py-1 px-2 ml-2" onClick={() => deleteProductHandler(product._id)}>
-                                                        <i className="fa fa-trash"></i>
-                                                    </button>
+                                                    {showDeleted
+                                                        ? <button className="btn btn-success py-1 px-2" onClick={() => restoreProductHandler(product._id)}>Restore</button>
+                                                        : <>
+                                                            <Link to={`/admin/product/${product._id}`} className="btn btn-primary py-1 px-2">
+                                                                <i className="fa fa-pencil"></i>
+                                                            </Link>
+                                                            <button className="btn btn-danger py-1 px-2 ml-2" onClick={() => deleteProductHandler(product._id)}>
+                                                                <i className="fa fa-trash"></i>
+                                                            </button>
+                                                        </>}
                                                 </td>
                                             </tr>
                                         ))}

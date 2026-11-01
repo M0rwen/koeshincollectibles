@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 // import { getToken } from '../../Utils/helpers'
 import { useDispatch, useSelector } from 'react-redux'
 import { myOrders } from '../../actions/orderActions'
-import { formatCurrency } from '../../Utils/helpers'
+import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
 
 const ListOrders = () => {
     // const [loading, setLoading] = useState(true)
@@ -52,6 +52,7 @@ const ListOrders = () => {
                         const reference = order.orderReference || order._id
                         const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'
                         const delivered = String(order.orderStatus || '').includes('Delivered')
+                        const totals = calculateOrderTotals(items)
 
                         return (
                             <article className="customer-order-row" key={order._id}>
@@ -74,7 +75,7 @@ const ListOrders = () => {
                                     <span className={delivered ? 'customer-order-status is-delivered' : 'customer-order-status'}>
                                         {order.orderStatus || 'Processing'}
                                     </span>
-                                    <strong>{formatCurrency(order.totalPrice)}</strong>
+                                    <strong>{formatCurrency(totals.totalPrice)}</strong>
                                     <time>{date}</time>
                                 </div>
                                 <Link className="customer-order-view" to={`/order/${order._id}`}>View</Link>

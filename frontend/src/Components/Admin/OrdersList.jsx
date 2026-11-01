@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import MetaData from '../Layout/MetaData'
@@ -13,12 +13,14 @@ import { DataGrid, } from '@mui/x-data-grid'
 import { useDispatch, useSelector } from 'react-redux'
 import { allOrders, clearErrors, deleteOrder } from '../../actions/orderActions'
 import { DELETE_ORDER_RESET } from '../../constants/orderConstants'
-import { formatCurrency } from '../../Utils/helpers'
+import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
+import api from '../../Utils/api'
 
 const OrdersList = () => {
     const dispatch = useDispatch();
     const { loading, error, orders } = useSelector(state => state.allOrders);
     const { isDeleted } = useSelector(state => state.order)
+    const [showDeleted, setShowDeleted] = useState(false)
     // const [loading, setLoading] = useState(true)
     // const [error, setError] = useState('')
     // const [allOrders, setAllOrders] = useState([])
@@ -62,20 +64,29 @@ const OrdersList = () => {
     //     }
     // }
     useEffect(() => {
-        dispatch(allOrders())
         if (error) {
             errMsg(error)
             dispatch(clearErrors())
-
         }
         if (isDeleted) {
-            successMsg('Order deleted successfully');
+            successMsg('Order moved to Deleted');
             dispatch({ type: DELETE_ORDER_RESET })
-            // navigate('/admin/orders');
+            dispatch(allOrders(showDeleted))
+            return
         }
-    }, [error, isDeleted, dispatch])
+        dispatch(allOrders(showDeleted))
+    }, [error, isDeleted, showDeleted, dispatch])
     const deleteOrderHandler = (id) => {
         dispatch(deleteOrder(id))
+    }
+    const restoreOrderHandler = async (id) => {
+        try {
+            await api.put(`${import.meta.env.VITE_API}/admin/order/${id}/restore`)
+            successMsg('Order restored successfully')
+            dispatch(allOrders(true))
+        } catch (error) {
+            errMsg(error.response?.data?.message || 'Unable to restore order')
+        }
     }
 
     const columns = [
@@ -117,13 +128,16 @@ const OrdersList = () => {
             renderCell: (params) => (
 
                 <>
-                    {console.log(params)}
-                    <Link to={`/admin/order/${params.id}`} className="btn btn-primary py-1 px-2">
-                        <i className="fa fa-eye"></i>
-                    </Link>
-                    <button className="btn btn-danger py-1 px-2 ml-2" onClick={() => deleteOrderHandler(params.id)}>
-                        <i className="fa fa-trash"></i>
-                    </button>
+                    {showDeleted
+                        ? <button className="btn btn-success py-1 px-2" onClick={() => restoreOrderHandler(params.id)}>Restore</button>
+                        : <>
+                            <Link to={`/admin/order/${params.id}`} className="btn btn-primary py-1 px-2">
+                                <i className="fa fa-eye"></i>
+                            </Link>
+                            <button className="btn btn-danger py-1 px-2 ml-2" onClick={() => deleteOrderHandler(params.id)}>
+                                <i className="fa fa-trash"></i>
+                            </button>
+                        </>}
                 </>
             )
         }
@@ -131,7 +145,7 @@ const OrdersList = () => {
     const rows = orders.map(order => ({
         id: order._id,
         numofItems: order.orderItems.length,
-        amount: formatCurrency(order.totalPrice),
+        amount: formatCurrency(calculateOrderTotals(order.orderItems || []).totalPrice),
         status: order.orderStatus,
     }));
 
@@ -146,18 +160,27 @@ const OrdersList = () => {
                     <>
                         <h1 className="my-5">All Orders</h1>
                         {loading ? <Loader /> : (
-                            <div style={{ width: '100%' }}>
-                                <DataGrid
-                                    rows={rows}
-                                    columns={columns}
+                            <>
+                                <button
+                                    type="button"
+                                    className={`btn mb-3 ${showDeleted ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                    onClick={() => setShowDeleted(value => !value)}
+                                >
+                                    {showDeleted ? 'Show Active Orders' : 'Show Deleted Orders'}
+                                </button>
+                                <div style={{ width: '100%' }}>
+                                    <DataGrid
+                                        rows={rows}
+                                        columns={columns}
 
-                                    pageSize={5}
-                                    rowsPerPageOptions={[5, 10, 25]}
-                                    disableSelectionOnClick
-                                    getRowId={(row) => row.id}
-                                    showToolbar
-                                />
-                            </div>
+                                        pageSize={5}
+                                        rowsPerPageOptions={[5, 10, 25]}
+                                        disableSelectionOnClick
+                                        getRowId={(row) => row.id}
+                                        showToolbar
+                                    />
+                                </div>
+                            </>
                         )}
                     </>
                 </div>

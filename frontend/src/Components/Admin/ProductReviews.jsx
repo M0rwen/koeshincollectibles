@@ -1,47 +1,44 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 
 
 import MetaData from '../Layout/MetaData'
-import Loader from '../Layout/Loader'
 import Sidebar from './SideBar'
 // import Toast from '../Layout/Toast'
 import Swal from 'sweetalert2'
-import { getUser, getToken, errMsg } from '../../Utils/helpers'
-import axios from 'axios'
+import { errMsg, getToken, successMsg } from '../../Utils/helpers'
+import api from '../../Utils/api'
 import { DataGrid, } from '@mui/x-data-grid'
 
 const ProductReviews = () => {
     const [productId, setProductId] = useState('')
-    const [error, setError] = useState('')
     const [listReviews, setListReviews] = useState([])
-    const [deleteError, setDeleteError] = useState('')
-    const [isDeleted, setIsDeleted] = useState(false)
-    const [user, setUser] = useState(getUser())
-
-    const config = {
+    const config = useMemo(() => ({
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${getToken()}`
         }
-    }
+    }), [])
 
-    const getProductReviews = async (id) => {
+    const getProductReviews = useCallback(async (id) => {
         try {
 
-            const { data } = await axios.get(`${import.meta.env.VITE_API}/reviews?id=${id}`, config)
+            const { data } = await api.get(`${import.meta.env.VITE_API}/reviews?id=${id}`, config)
             setListReviews(data.reviews)
 
         } catch (error) {
-            setError(error.response.data.message)
+            errMsg(error.response?.data?.message || error.message)
         }
-    }
+    }, [config])
     const deleteReview = async (id, productId) => {
         try {
-            const { data } = await axios.delete(`${import.meta.env.VITE_API}/reviews?id=${id}&productId=${productId}`, config)
-            setIsDeleted(data.success)
+            const { data } = await api.delete(`${import.meta.env.VITE_API}/reviews?id=${id}&productId=${productId}`, config)
+            if (data.success) {
+                successMsg('Review moved to Deleted')
+                await getProductReviews(productId)
+            }
 
         } catch (error) {
-            setDeleteError(error.response.data.message);
+            errMsg(error.response?.data?.message || error.message)
         }
     }
 
@@ -59,24 +56,6 @@ const ProductReviews = () => {
         })
 
     }
-    useEffect(() => {
-        if (error) {
-            setError('')
-        }
-
-        if (deleteError) {
-            setDeleteError('')
-        }
-        if (productId !== '') {
-            getProductReviews(productId)
-        }
-
-        if (isDeleted) {
-            errMsg('Review deleted successfully', 'success');
-            setIsDeleted(false)
-        }
-    }, [error, productId, isDeleted, deleteError])
-
     const submitHandler = (e) => {
         e.preventDefault();
         getProductReviews(productId)

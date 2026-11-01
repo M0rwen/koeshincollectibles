@@ -85,11 +85,11 @@ export const getOrderDetails = (id) => async (dispatch) => {
     }
 }
 
-export const allOrders = () => async (dispatch) => {
+export const allOrders = (deleted = false) => async (dispatch) => {
 
     try {
         dispatch({ type: ALL_ORDERS_REQUEST });
-        const { data } = await api.get(`${import.meta.env.VITE_API}/admin/orders`, {
+        const { data } = await api.get(`${import.meta.env.VITE_API}/admin/orders${deleted ? '?deleted=true' : ''}`, {
             //AxiosRequestConfig parameter
             withCredentials: true //correct
         })
