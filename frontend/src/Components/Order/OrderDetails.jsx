@@ -97,15 +97,24 @@ const OrderDetails = () => {
                             <h4 className="my-4">Order Items:</h4>
 
                             <hr />
-                            <div className="cart-item my-1">
-                                {orderItems && orderItems.map(item => (
-                                    <div key={item.product} className="row my-5">
+                            <div className="cart-item my-1 order-line-items">
+                                {orderItems && orderItems.map((item, index) => {
+                                    const productId = item.product && typeof item.product === 'object'
+                                        ? item.product._id
+                                        : item.product
+
+                                    return (
+                                    <div key={item._id || `${productId || item.name}-${index}`} className="row my-5">
                                         <div className="col-4 col-lg-2">
-                                            <img src={item.image} alt={item.name} height="45" width="65" />
+                                            {productId
+                                                ? <Link to={`/product/${productId}`} aria-label={`View ${item.name}`}><img src={item.image} alt={item.name} height="45" width="65" /></Link>
+                                                : <img src={item.image} alt={item.name} height="45" width="65" />}
                                         </div>
 
                                         <div className="col-5 col-lg-5">
-                                            <Link to={`/products/${item.product}`}>{item.name}</Link>
+                                            {productId
+                                                ? <Link to={`/product/${productId}`}>{item.name}</Link>
+                                                : <span>{item.name}</span>}
                                         </div>
 
 
@@ -117,7 +126,8 @@ const OrderDetails = () => {
                                             <p>{item.quantity} Piece(s)</p>
                                         </div>
                                     </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                             <hr />
                         </div>

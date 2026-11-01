@@ -70,7 +70,7 @@ export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], cat
 
 export const getProductDetails = (id) => async (dispatch) => {
     try {
-        dispatch({ type: PRODUCT_DETAILS_REQUEST })
+        dispatch({ type: PRODUCT_DETAILS_REQUEST, payload: id })
         const { data } = await api.get(`${import.meta.env.VITE_API}/product/${id}`)
         dispatch({
             type: PRODUCT_DETAILS_SUCCESS,
@@ -79,7 +79,7 @@ export const getProductDetails = (id) => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: PRODUCT_DETAILS_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message
         })
     }
 }
@@ -139,13 +139,15 @@ export const updateProduct = (id, productData) => async (dispatch) => {
         const { data } = await api.put(`${import.meta.env.VITE_API}/admin/product/${id}`, productData, config)
         dispatch({
             type: UPDATE_PRODUCT_SUCCESS,
-            payload: data
+            payload: data.product
         })
+        return { success: true, product: data.product }
     } catch (error) {
         dispatch({
             type: UPDATE_PRODUCT_FAIL,
             payload: error.response?.data?.message || error.message
         })
+        return { success: false }
     }
 }
 

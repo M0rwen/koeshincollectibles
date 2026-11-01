@@ -18,7 +18,12 @@ const phpAmount = amount => `PHP ${Number(amount || 0).toLocaleString('en-PH', {
 })}`
 
 const paymentStatus = order => {
-    if (['Cash on Delivery', 'Card (demo only)'].includes(order.paymentMethod)) return 'Pending'
+    if (order.paymentMethod === 'Cash on Delivery') {
+        return order.orderStatus === 'Delivered' && (order.paymentInfo?.status === 'succeeded' || order.paidAt)
+            ? 'Paid on delivery'
+            : 'Pending (due on delivery)'
+    }
+    if (order.paymentMethod === 'Card (demo only)') return 'No payment processed (demo)'
     return order.paymentInfo?.status === 'succeeded' ? 'Paid' : 'Pending'
 }
 

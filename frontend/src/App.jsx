@@ -186,7 +186,7 @@ function App() {
           <Route path="/confirm" element={<ConfirmOrder />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/success" element={<OrderSuccess />} />
-          <Route path="/orders/me" element={<ListOrders />} />
+          <Route path="/orders/me" element={<ProtectedRoute isCustomerOnly><ListOrders /></ProtectedRoute>} />
           <Route path="/order/:id" element={<OrderDetails />} />
           {/* <Route path="/dashboard" element={<Dashboard />} /> */}
 

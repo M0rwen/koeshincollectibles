@@ -4,7 +4,7 @@ import Loader from '../Layout/Loader'
 import { useDispatch, useSelector } from 'react-redux'
 import { loadUser } from '../../actions/userActions'
 
-const ProtectedRoute = ({ children, isAdmin = false }) => {
+const ProtectedRoute = ({ children, isAdmin = false, isCustomerOnly = false }) => {
     const { isAuthenticated, loading, user, sessionRestored, sessionError } = useSelector(state => state.auth)
     const dispatch = useDispatch()
 
@@ -23,6 +23,9 @@ const ProtectedRoute = ({ children, isAdmin = false }) => {
     if (loading === false) {
         if (isAuthenticated === false) {
             return <Navigate to='/login' />
+        }
+        if (isCustomerOnly === true && user.role === 'admin') {
+            return <Navigate to='/dashboard' replace />
         }
         if (isAdmin === true && user.role !== 'admin') {
             return <Navigate to='/' />

@@ -23,8 +23,8 @@ const readImage = file => new Promise((resolve, reject) => {
 
 const UpdateProduct = () => {
     const dispatch = useDispatch()
-    const { error, product } = useSelector(state => state.productDetails)
-    const { loading, error: updateError, isUpdated } = useSelector(state => state.product)
+    const { error, loading: productLoading, product } = useSelector(state => state.productDetails)
+    const { loading, error: updateError } = useSelector(state => state.product)
     const { id } = useParams()
     const navigate = useNavigate()
     const oldImages = product?._id === id ? product.images || [] : []
@@ -45,18 +45,26 @@ const UpdateProduct = () => {
         },
         validationSchema,
         validateOnMount: true,
-        onSubmit: values => dispatch(updateProduct(product._id, {
-            ...values,
-            price: Number(values.price),
-            stock: Number(values.stock)
-        }))
+        onSubmit: async values => {
+            const result = await dispatch(updateProduct(product._id, {
+                ...values,
+                price: Number(values.price),
+                stock: Number(values.stock)
+            }))
+            if (result?.success) {
+                dispatch({ type: UPDATE_PRODUCT_RESET })
+                navigate('/admin/products')
+                toast.success('Product updated successfully', { position: 'bottom-right' })
+            }
+        }
     })
 
     useEffect(() => {
-        if (!product || product._id !== id) {
-            dispatch(getProductDetails(id))
-        }
+        dispatch({ type: UPDATE_PRODUCT_RESET })
+        dispatch(getProductDetails(id))
+    }, [dispatch, id])
 
+    useEffect(() => {
         if (error) {
             toast.error(error, { position: 'bottom-right' })
             dispatch(clearErrors())
@@ -65,12 +73,7 @@ const UpdateProduct = () => {
             toast.error(updateError, { position: 'bottom-right' })
             dispatch(clearErrors())
         }
-        if (isUpdated) {
-            navigate('/admin/products')
-            toast.success('Product updated successfully', { position: 'bottom-right' })
-            dispatch({ type: UPDATE_PRODUCT_RESET })
-        }
-    }, [error, updateError, product, id, isUpdated, dispatch, navigate])
+    }, [error, updateError, dispatch])
 
     const onImagesChange = async event => {
         const files = Array.from(event.target.files || [])
@@ -248,14 +251,14 @@ const UpdateProduct = () => {
                                 {showError('images') && <div className="field-error" id="images_error" role="alert">{formik.errors.images}</div>}
                             </div>
 
-                            <button
+                            {productLoading || product?._id !== id ? <div role="status">Loading product details...</div> : <button
                                 id="login_button"
                                 type="submit"
                                 className="btn btn-block py-3"
-                                disabled={!formik.isValid || formik.isSubmitting || loading || !product || product._id !== id}
+                                disabled={!formik.isValid || formik.isSubmitting || loading}
                             >
                                 {formik.isSubmitting || loading ? 'Updating…' : 'UPDATE'}
-                            </button>
+                            </button>}
                         </form>
                     </div>
                 </div>

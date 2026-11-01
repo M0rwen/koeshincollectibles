@@ -39,9 +39,11 @@ const Header = ({ theme, onToggleTheme }) => {
                                 <span className="account-mark">{user.name?.charAt(0)?.toUpperCase() || 'K'}</span>
                                 <span className="account-label">{user.name?.split(' ')[0] || 'Account'}</span>
                             </Link>
-                            <Link className="site-text-link header-orders-link" to="/orders/me" aria-label="View orders">
-                                <i className="fa fa-list-alt" aria-hidden="true" /><span>Orders</span>
-                            </Link>
+                            {user.role !== 'admin' && (
+                                <Link className="site-text-link header-orders-link" to="/orders/me" aria-label="View orders">
+                                    <i className="fa fa-list-alt" aria-hidden="true" /><span>Orders</span>
+                                </Link>
+                            )}
                             {user.role === 'admin' && (
                                 <Link className="site-text-link header-admin-link" to="/dashboard" aria-label="Admin dashboard">
                                     <i className="fa fa-wrench" aria-hidden="true" /><span>Admin</span>
@@ -61,11 +63,13 @@ const Header = ({ theme, onToggleTheme }) => {
                             </Link>
                         </>
                     )}
-                    <Link className="site-cart" to="/cart" aria-label={`Cart, ${cartItems?.length || 0} items`}>
-                        <i className="fa fa-shopping-bag" aria-hidden="true" />
-                        <span>Bag</span>
-                        <span className="cart-count">{cartItems?.length || 0}</span>
-                    </Link>
+                    {(!user || user.role !== 'admin') && (
+                        <Link className="site-cart" to="/cart" aria-label={`Cart, ${cartItems?.length || 0} items`}>
+                            <i className="fa fa-shopping-bag" aria-hidden="true" />
+                            <span>Bag</span>
+                            <span className="cart-count">{cartItems?.length || 0}</span>
+                        </Link>
+                    )}
                     <button
                         className="theme-toggle"
                         type="button"
