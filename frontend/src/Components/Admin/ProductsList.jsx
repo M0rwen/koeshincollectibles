@@ -170,7 +170,7 @@ const ProductsList = () => {
                             <div className="alert alert-danger">{error}</div>
                         ) : (
                             <>
-                                <div className="d-flex justify-content-between align-items-center mb-3">
+                                <div className="admin-list-toolbar d-flex justify-content-between align-items-center mb-3">
                                     <button
                                         type="button"
                                         className={`btn ${showDeleted ? 'btn-primary' : 'btn-outline-secondary'}`}

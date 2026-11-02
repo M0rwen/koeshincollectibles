@@ -39,9 +39,10 @@ const Cart = () => {
     return (
         <>
             <MetaData title={'Your Cart'} />
-            {cartItems.length === 0 ? <h2 className="mt-5">Your Cart is Empty</h2> : (
-                <>
-                    <h2 className="mt-5">Your Cart: <b>{cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}</b></h2>
+            <main className="cart-page">
+                {cartItems.length === 0 ? <h2 className="cart-page-title">Your Cart is Empty</h2> : (
+                    <>
+                    <h2 className="cart-page-title">Your Cart: <b>{cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}</b></h2>
 
                     <div className="row d-flex justify-content-between">
                         <div className="col-12 col-lg-8">
@@ -104,8 +105,9 @@ const Cart = () => {
                             </div>
                         </div>
                     </div>
-                </>
-            )}
+                    </>
+                )}
+            </main>
         </>
     )
 }

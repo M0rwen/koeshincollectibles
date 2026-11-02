@@ -157,8 +157,8 @@ exports.getProductSuggestions = async (req, res) => {
             { category: { $regex: escapedKeyword, $options: 'i' } }
         ]
     })
-        .select('name category price images')
-        .limit(6)
+        .select('name category price images ratings numOfReviews stock')
+        .limit(8)
 
     return res.status(200).json({ success: true, products })
 }

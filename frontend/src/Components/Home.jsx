@@ -272,7 +272,7 @@ const Home = () => {
     return (
         <>
             <MetaData title={isCollectionsPage ? 'Collections' : category || (isShopPage ? 'Shop all products' : 'Curious finds, carefully kept')} />
-            <main className="store-home">
+            <main className={`store-home${isCollectionsPage ? ' collections-page' : ''}`}>
                 {(isCollectionsPage || isCategoryPage) && <section className="collection-shortcuts" id="collections" aria-labelledby="collections-title">
                     <div className="section-heading collection-heading">
                         <div>
@@ -305,17 +305,22 @@ const Home = () => {
                     </nav>
                 </section>}
 
-                <section className="shop-section" id="shop" aria-labelledby="shop-title">
-                    <div className="shop-title-row">
+                <section
+                    className="shop-section"
+                    id="shop"
+                    aria-labelledby={isCollectionsPage ? undefined : 'shop-title'}
+                    aria-label={isCollectionsPage ? 'Collection shelves' : undefined}
+                >
+                    {!isCollectionsPage && <div className="shop-title-row">
                         <div>
                             <p className="store-kicker">THE GOOD STUFF</p>
-                            <h2 id="shop-title">{keyword ? `Finds for "${keyword}"` : isCollectionsPage ? 'All collections' : category || (isShopPage ? 'Shop all products' : isCategoryPage ? categoryParam : 'Shop the collection')}</h2>
+                            <h2 id="shop-title">{keyword ? `Finds for "${keyword}"` : category || (isShopPage ? 'Shop all products' : isCategoryPage ? categoryParam : 'Shop the collection')}</h2>
                         </div>
                         <div className="shop-count-wrap">
                             <p className="shop-count">{count} {count === 1 ? 'find' : 'finds'} in the cabinet</p>
                             <p className="catalog-preview-note">Preview listings; verify price, condition, and stock before sale.</p>
                         </div>
-                    </div>
+                    </div>}
 
                     <div className="shop-layout">
                         <aside className="shop-filters" aria-label="Filter products">
