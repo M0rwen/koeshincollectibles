@@ -1,41 +1,70 @@
 import { useState, useEffect } from 'react'
-import { useParams, } from 'react-router-dom'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
 import { Carousel } from 'react-bootstrap'
 
 import 'react-toastify/dist/ReactToastify.css';
 
 import { formatCurrency } from '../../Utils/helpers'
+import { startBuyNowCheckout, getPendingBuyNow, clearPendingBuyNow, setPendingBuyNow } from '../../Utils/checkout'
 import ListReviews from '../Review/ListReviews';
 import { useDispatch, useSelector } from 'react-redux'
 import { getProductDetails, newReview as submitReview } from '../../actions/productActions'
 import { addItemToCart } from '../../actions/cartActions'
+import { toast } from 'react-toastify'
 const ProductDetails = () => {
 
     const { product } = useSelector(state => state.productDetails);
     // const [product, setProduct] = useState({})
     const { user } = useSelector(state => state.auth)
     const [quantity, setQuantity] = useState(1)
+    const [loadedProductId, setLoadedProductId] = useState(null)
     const [rating, setRating] = useState(0)
     const [comment, setComment] = useState('')
     const [errorReview, setErrorReview] = useState('');
     const [success, setSuccess] = useState('')
-    // const [user, setUser] = useState(getUser())
 
     let { id } = useParams()
     const dispatch = useDispatch()
+    const location = useLocation()
+    const navigate = useNavigate()
+    const stock = Math.max(0, Number(product.stock) || 0)
+    const productLoaded = loadedProductId === id && product?._id === id
+    const displayQuantity = productLoaded && stock > 0
+        ? Math.min(quantity, stock)
+        : quantity
 
     const increaseQty = () => {
-        setQuantity(current => Math.min(current + 1, product.stock))
+        setQuantity(current => Math.min(Math.max(current, displayQuantity) + 1, stock))
     }
 
     const decreaseQty = () => {
-        setQuantity(current => Math.max(current - 1, 1))
+        setQuantity(Math.max(displayQuantity - 1, 1))
     }
 
     const addToCart = async () => {
+        if (!productLoaded) return
         await dispatch(addItemToCart(id, quantity));
 
+    }
+
+    const startBuyNow = () => {
+        if (!productLoaded || stock === 0 || user?.role === 'admin') return
+        if (!user) {
+            setPendingBuyNow({ productId: product._id, quantity: displayQuantity })
+            navigate(`/login?redirect=buy-now&productId=${encodeURIComponent(product._id)}`)
+            return
+        }
+
+        startBuyNowCheckout({
+            product: product._id,
+            name: product.name,
+            price: product.price,
+            image: product.images?.[0]?.url || '',
+            stock,
+            quantity: Math.min(Math.max(1, displayQuantity), stock)
+        })
+        navigate('/shipping')
     }
 
     // const productDetails = async (id) => {
@@ -97,9 +126,41 @@ const ProductDetails = () => {
     // }, [id,]);
 
     useEffect(() => {
-        dispatch(getProductDetails(id))
+        let isCurrent = true
+        dispatch(getProductDetails(id)).then(loadedProduct => {
+            if (isCurrent && loadedProduct?._id === id) setLoadedProductId(id)
+            if (isCurrent && !loadedProduct && getPendingBuyNow()?.productId === id) clearPendingBuyNow()
+        })
+        return () => {
+            isCurrent = false
+        }
+    }, [id, dispatch])
 
-    }, [id, dispatch]);
+    useEffect(() => {
+        if (!user || !productLoaded || new URLSearchParams(location.search).get('buyNow') !== '1') return
+
+        const pendingBuyNow = getPendingBuyNow()
+        if (!pendingBuyNow || pendingBuyNow.productId !== id) return
+
+        clearPendingBuyNow()
+        if (user.role === 'admin') return
+
+        if (stock === 0) {
+            toast.error('This item is out of stock.', { position: 'bottom-right' })
+            navigate(`/product/${id}`, { replace: true })
+            return
+        }
+
+        startBuyNowCheckout({
+            product: product._id,
+            name: product.name,
+            price: product.price,
+            image: product.images?.[0]?.url || '',
+            stock,
+            quantity: Math.min(Math.max(1, Number(pendingBuyNow.quantity) || 1), stock)
+        })
+        navigate('/shipping', { replace: true })
+    }, [user, location.search, product, productLoaded, id, stock, navigate])
 
     // useEffect(() => {
     //     localStorage.setItem('cartItems', JSON.stringify(cartItems));
@@ -135,14 +196,17 @@ const ProductDetails = () => {
                     <hr />
 
                     <p id="product_price">{formatCurrency(product.price)}</p>
-                    <div className="product-purchase-row">
-                        <div className="stockCounter">
-                            <button className="quantity-step" type="button" onClick={decreaseQty} aria-label="Decrease quantity">-</button>
-                            <input type="number" className="count" value={quantity} readOnly aria-label="Quantity" />
-                            <button className="quantity-step" type="button" onClick={increaseQty} aria-label="Increase quantity">+</button>
+                    {user?.role !== 'admin' && (
+                        <div className="product-purchase-row">
+                            <div className="stockCounter">
+                                <button className="quantity-step" type="button" onClick={decreaseQty} disabled={!productLoaded || quantity <= 1} aria-label="Decrease quantity">-</button>
+                                <input type="number" className="count" value={displayQuantity} readOnly aria-label="Quantity" />
+                                <button className="quantity-step" type="button" onClick={increaseQty} disabled={!productLoaded || displayQuantity >= stock} aria-label="Increase quantity">+</button>
+                            </div>
+                            <button type="button" id="cart_btn" className="btn btn-primary" disabled={!productLoaded || stock === 0} onClick={addToCart}>Add to Cart</button>
+                            <button type="button" className="btn shop-button-accent buy-now-button" disabled={!productLoaded || stock === 0} onClick={startBuyNow}>Buy now</button>
                         </div>
-                        <button type="button" id="cart_btn" className="btn btn-primary" disabled={product.stock === 0} onClick={addToCart}>Add to Cart</button>
-                    </div>
+                    )}
                     <hr />
 
                     <p>Status: <span id="stock_status" className={product.stock > 0 ? 'greenColor' : 'redColor'} >{product.stock > 0 ? 'In Stock' : 'Out of Stock'}</span></p>

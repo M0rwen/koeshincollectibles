@@ -54,6 +54,10 @@ const CatalogPage = () => {
   return <Home key={pathname} />
 }
 
+const AdminPage = ({ children }) => (
+  <main className="admin-page-shell">{children}</main>
+)
+
 function App() {
   const dispatch = useDispatch()
   const [theme, setTheme] = useState(() => {
@@ -199,17 +203,17 @@ function App() {
           /> */}
           <Route
             path="/admin/order/:id"
-            element={<ProcessOrder />} />
+            element={<AdminPage><ProcessOrder /></AdminPage>} />
           <Route
             path="/admin/users"
-            element={<UsersList />} />
-          <Route path="/admin/user/:id" element={<UpdateUser />} />
+            element={<AdminPage><UsersList /></AdminPage>} />
+          <Route path="/admin/user/:id" element={<AdminPage><UpdateUser /></AdminPage>} />
 
           <Route
             path="/admin/products"
             element={
               <ProtectedRoute isAdmin={true}>
-                <ProductsList />
+                <AdminPage><ProductsList /></AdminPage>
               </ProtectedRoute>
             }
           />
@@ -218,7 +222,7 @@ function App() {
             path="/admin/product"
             element={
               <ProtectedRoute isAdmin={true}>
-                <NewProduct />
+                <AdminPage><NewProduct /></AdminPage>
               </ProtectedRoute>
             }
           />
@@ -227,14 +231,14 @@ function App() {
             path="/admin/product/:id"
 
             element={<ProtectedRoute isAdmin={true}>
-              <UpdateProduct />
+              <AdminPage><UpdateProduct /></AdminPage>
             </ProtectedRoute>} />
 
           <Route
             path="/admin/orders"
             element={
               <ProtectedRoute isAdmin={true}>
-                <OrdersList />
+                <AdminPage><OrdersList /></AdminPage>
               </ProtectedRoute>
             }
           />
@@ -243,7 +247,7 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute isAdmin={true}>
-                <Dashboard />
+                <AdminPage><Dashboard /></AdminPage>
               </ProtectedRoute>
             }
           />
@@ -251,13 +255,19 @@ function App() {
             path="/admin/reviews"
             element={
               <ProtectedRoute isAdmin={true} >
-                <ProductReviews />
+                <AdminPage><ProductReviews /></AdminPage>
               </ProtectedRoute>} />
         </Routes>
         <Footer />
       </Router>
 
-      <ToastContainer />
+      <ToastContainer
+        className="shop-toast-container"
+        position="bottom-right"
+        theme={theme}
+        toastClassName="shop-toast"
+        progressClassName="shop-toast-progress"
+      />
     </>
   )
 }

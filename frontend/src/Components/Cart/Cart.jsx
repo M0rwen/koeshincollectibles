@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { addItemToCart, removeItemFromCart } from '../../actions/cartActions'
 import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
+import { startCartCheckout } from '../../Utils/checkout'
 
 
 const Cart = () => {
@@ -30,6 +31,7 @@ const Cart = () => {
         dispatch(removeItemFromCart(id))
     }
     const checkoutHandler = () => {
+        startCartCheckout()
         navigate(isAuthenticated ? '/shipping' : '/login?redirect=shipping')
     }
     // localStorage.setItem('cartItems', JSON.stringify(cartItems))

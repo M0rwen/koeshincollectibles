@@ -1111,12 +1111,15 @@ ul.CTAs a {
   color-scheme: light;
   --shop-ink: #382d3d;
   --shop-accent-ink: #382d3d;
+  --shop-primary-ink: #fffdf9;
   --shop-green: #666080;
   --shop-green-light: #e5e3ef;
   --shop-orange: #bb4059;
   --shop-yellow: #e4c49e;
   --shop-success: #286b49;
+  --shop-success-ink: #fffdf9;
   --shop-danger: #ad314d;
+  --shop-danger-ink: #fffdf9;
   --shop-danger-surface: #f8e7e8;
   --shop-star: #8c642e;
   --shop-paper: #fbf8f3;
@@ -1132,12 +1135,15 @@ html[data-theme='dark'] {
   color-scheme: dark;
   --shop-ink: #f4edf6;
   --shop-accent-ink: #261d2d;
+  --shop-primary-ink: #261d2d;
   --shop-green: #c7c0e0;
   --shop-green-light: #403b52;
   --shop-orange: #ff9aab;
   --shop-yellow: #e9bd8f;
   --shop-success: #75d8a4;
+  --shop-success-ink: #17251d;
   --shop-danger: #ffa0b2;
+  --shop-danger-ink: #321c23;
   --shop-danger-surface: #49303a;
   --shop-star: #f0c98e;
   --shop-paper: #1b1621;
@@ -3036,6 +3042,264 @@ html[data-theme='dark'] .Toastify__toast-theme--light {
 
 html[data-theme='dark'] .Toastify__close-button {
   color: var(--shop-ink);
+}
+
+.admin-page-shell {
+  width: min(1320px, calc(100% - 48px));
+  margin: 24px auto;
+  padding: 0 12px;
+}
+
+.admin-page-shell .MuiDataGrid-root {
+  color: var(--shop-ink);
+  background: var(--shop-surface);
+  border-color: var(--shop-line);
+}
+
+.admin-page-shell .MuiDataGrid-columnHeaders,
+.admin-page-shell .MuiDataGrid-footerContainer,
+.admin-page-shell .MuiDataGrid-topContainer,
+.admin-page-shell .MuiDataGrid-columnHeader {
+  color: var(--shop-ink);
+  background: var(--shop-surface-raised);
+  border-color: var(--shop-line);
+}
+
+.admin-page-shell .MuiDataGrid-cell,
+.admin-page-shell .MuiDataGrid-row,
+.admin-page-shell .MuiDataGrid-overlay,
+.admin-page-shell .MuiTablePagination-root,
+.admin-page-shell .MuiDataGrid-menuIconButton,
+.admin-page-shell .MuiDataGrid-sortIcon,
+.admin-page-shell .MuiIconButton-root {
+  color: var(--shop-ink);
+  border-color: var(--shop-line);
+}
+
+.admin-page-shell .MuiDataGrid-row:hover,
+.admin-page-shell .MuiDataGrid-row.Mui-selected {
+  background: var(--shop-green-light);
+}
+
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  color: var(--shop-primary-ink);
+  background-color: var(--shop-green);
+  border-color: var(--shop-green);
+}
+
+.btn-danger,
+.btn-danger:hover,
+.btn-danger:focus,
+.btn-danger:active,
+.shop-button-accent,
+.shop-button-accent:hover,
+.shop-button-accent:focus,
+.shop-button-accent:active {
+  color: var(--shop-danger-ink);
+  background-color: var(--shop-orange);
+  border-color: var(--shop-orange);
+}
+
+.btn-success,
+.btn-success:hover,
+.btn-success:focus,
+.btn-success:active {
+  color: var(--shop-success-ink);
+  background-color: var(--shop-success);
+  border-color: var(--shop-success);
+}
+
+.btn-info,
+.btn-info:hover,
+.btn-info:focus,
+.btn-info:active,
+.btn-warning,
+.btn-warning:hover,
+.btn-warning:focus,
+.btn-warning:active {
+  color: var(--shop-primary-ink);
+  background-color: var(--shop-green);
+  border-color: var(--shop-green);
+}
+
+.btn-outline-primary,
+.btn-outline-success,
+.btn-outline-danger,
+.btn-outline-info,
+.btn-outline-warning,
+.btn-outline-secondary {
+  color: var(--shop-ink);
+  background: var(--shop-surface);
+  border-color: var(--shop-line);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-success:hover,
+.btn-outline-danger:hover,
+.btn-outline-info:hover,
+.btn-outline-warning:hover,
+.btn-outline-secondary:hover {
+  color: var(--shop-ink);
+  background: var(--shop-surface-raised);
+  border-color: var(--shop-green);
+}
+
+.admin-page-shell .card.bg-primary,
+.admin-page-shell .card.bg-success,
+.admin-page-shell .card.bg-danger,
+.admin-page-shell .card.bg-info,
+.admin-page-shell .card.bg-warning {
+  color: var(--shop-ink) !important;
+  background: var(--shop-surface) !important;
+  border: 1px solid var(--shop-line);
+  box-shadow: 0 8px 22px rgb(34 24 40 / 8%);
+}
+
+.admin-page-shell .card-footer {
+  color: var(--shop-ink) !important;
+  border-top: 1px solid var(--shop-line);
+  background: var(--shop-surface-raised);
+}
+
+.admin-page-shell .card-footer:hover {
+  color: var(--shop-orange) !important;
+}
+
+.profile-avatar {
+  display: inline-grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.profile-avatar-fallback {
+  color: var(--shop-primary-ink);
+  background: var(--shop-green);
+  font-weight: 700;
+}
+
+.site-actions .site-account {
+  text-decoration: none;
+}
+
+.site-actions .site-text-link.header-admin-link {
+  color: var(--shop-ink);
+  text-decoration: none;
+}
+
+.account-mark.profile-avatar {
+  display: inline-grid;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  background: var(--shop-green-light);
+}
+
+.account-mark.profile-avatar-fallback {
+  background: var(--shop-green);
+}
+
+.shop-toast-container .Toastify__toast {
+  color: var(--shop-ink);
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-line);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgb(24 17 30 / 18%);
+}
+
+.shop-toast-container .Toastify__toast--success {
+  --toastify-color-success: var(--shop-success);
+  border-left: 4px solid var(--shop-success);
+}
+
+.shop-toast-container .Toastify__toast--error {
+  --toastify-color-error: var(--shop-orange);
+  border-left: 4px solid var(--shop-orange);
+}
+
+.shop-toast-container .Toastify__toast--info,
+.shop-toast-container .Toastify__toast--warning {
+  --toastify-color-info: var(--shop-green);
+  --toastify-color-warning: var(--shop-yellow);
+  border-left: 4px solid var(--shop-green);
+}
+
+.shop-toast-container .Toastify__progress-bar {
+  background: var(--shop-green);
+}
+
+.shop-toast-container .Toastify__toast--success .Toastify__progress-bar {
+  background: var(--shop-success);
+}
+
+.shop-toast-container .Toastify__toast--error .Toastify__progress-bar {
+  background: var(--shop-orange);
+}
+
+.shop-toast-container .Toastify__toast--info .Toastify__progress-bar,
+.shop-toast-container .Toastify__toast--warning .Toastify__progress-bar {
+  background: var(--shop-green);
+}
+
+.shop-toast-container .Toastify__close-button {
+  color: var(--shop-muted);
+}
+
+.form-control,
+.custom-select,
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  color: var(--shop-ink);
+  background-color: var(--shop-surface);
+  border-color: var(--shop-line);
+}
+
+.form-control::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--shop-muted);
+  opacity: 1;
+}
+
+.form-control:focus,
+.custom-select:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  color: var(--shop-ink);
+  background-color: var(--shop-surface);
+  border-color: var(--shop-green);
+  box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--shop-green) 25%, transparent);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+input:autofill,
+textarea:autofill,
+select:autofill {
+  -webkit-text-fill-color: var(--shop-ink);
+  caret-color: var(--shop-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--shop-surface) inset;
+  box-shadow: 0 0 0 1000px var(--shop-surface) inset;
+  border-color: var(--shop-line);
+  transition: background-color 9999s ease-out 0s;
+}
+
+.buy-now-button {
+  min-height: 42px;
 }
 
 @media (max-width: 1050px) {

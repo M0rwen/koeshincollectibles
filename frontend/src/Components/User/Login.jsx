@@ -9,6 +9,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import { useDispatch, useSelector } from 'react-redux'
 import { login, loginWithGoogle, clearErrors } from '../../actions/userActions'
 import { loginSchema } from '../../validation/schemas'
+import { getPendingBuyNow } from '../../Utils/checkout'
 
 // Firebase popup helpers
 import { signInWithPopup } from 'firebase/auth'
@@ -49,6 +50,11 @@ const Login = () => {
     useEffect(() => {
         if (isAuthenticated && redirect === 'shipping') {
             navigate(`/${redirect}`)
+        } else if (isAuthenticated && redirect === 'buy-now') {
+            const pendingBuyNow = getPendingBuyNow()
+            navigate(pendingBuyNow?.productId
+                ? `/product/${encodeURIComponent(pendingBuyNow.productId)}?buyNow=1`
+                : '/', { replace: true })
         } else if (isAuthenticated) {
             navigate('/')
         }

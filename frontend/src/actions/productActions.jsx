@@ -76,11 +76,13 @@ export const getProductDetails = (id) => async (dispatch) => {
             type: PRODUCT_DETAILS_SUCCESS,
             payload: data.product
         })
+        return data.product
     } catch (error) {
         dispatch({
             type: PRODUCT_DETAILS_FAIL,
             payload: error.response?.data?.message || error.message
         })
+        return null
     }
 }
 

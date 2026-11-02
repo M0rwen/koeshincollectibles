@@ -1,5 +1,5 @@
 /* eslint-disable no-case-declarations */
-import { ADD_TO_CART, REMOVE_ITEM_CART, SAVE_SHIPPING_INFO, CLEAR_CART } from '../constants/cartConstants'
+import { ADD_TO_CART, REMOVE_ITEM_CART, REMOVE_ITEMS_CART, SAVE_SHIPPING_INFO, CLEAR_CART } from '../constants/cartConstants'
 export const cartReducer = (state = { cartItems: [], shippingInfo: {} }, action) => {
     // console.log(state.cartItems)
     switch (action.type) {
@@ -31,6 +31,14 @@ export const cartReducer = (state = { cartItems: [], shippingInfo: {} }, action)
                 ...state,
                 cartItems: state.cartItems.filter(i => i.product !== action.payload)
             }
+
+        case REMOVE_ITEMS_CART: {
+            const purchasedProductIds = new Set(action.payload)
+            return {
+                ...state,
+                cartItems: state.cartItems.filter(i => !purchasedProductIds.has(i.product))
+            }
+        }
 
         case SAVE_SHIPPING_INFO:
             return {

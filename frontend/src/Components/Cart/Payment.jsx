@@ -5,15 +5,17 @@ import { useDispatch, useSelector } from 'react-redux'
 import MetaData from '../Layout/MetaData'
 import CheckoutSteps from './CheckoutSteps'
 import { createOrder, clearErrors } from '../../actions/orderActions'
-import { clearCart } from '../../actions/cartActions'
+import { removeItemsFromCart } from '../../actions/cartActions'
 import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
+import { clearCheckoutSelection, getCheckoutItems } from '../../Utils/checkout'
 
 const Payment = () => {
     const dispatch = useDispatch()
     const navigate = useNavigate()
     const { cartItems, shippingInfo } = useSelector(state => state.cart)
     const { error, loading } = useSelector(state => state.newOrder)
-    const totals = calculateOrderTotals(cartItems)
+    const checkoutItems = getCheckoutItems(cartItems)
+    const totals = calculateOrderTotals(checkoutItems)
     const [orderInfo] = useState(() => JSON.parse(sessionStorage.getItem('orderInfo') || 'null'))
     const [paymentMethod, setPaymentMethod] = useState(() => (
         sessionStorage.getItem('paymentMethod') === 'Card (demo only)'
@@ -35,13 +37,13 @@ const Payment = () => {
 
     const submitHandler = async (event) => {
         event.preventDefault()
-        if (!orderInfo || cartItems.length === 0) {
+        if (!orderInfo || checkoutItems.length === 0) {
             navigate('/cart')
             return
         }
 
         const order = {
-            orderItems: cartItems,
+            orderItems: checkoutItems,
             shippingInfo,
             ...orderInfo,
             paymentMethod,
@@ -52,7 +54,8 @@ const Payment = () => {
         if (!createdOrder) return
 
         sessionStorage.setItem('lastOrderReceipt', JSON.stringify(createdOrder))
-        dispatch(clearCart())
+        await dispatch(removeItemsFromCart(checkoutItems.map(item => item.product)))
+        clearCheckoutSelection()
         sessionStorage.removeItem('orderInfo')
         sessionStorage.removeItem('paymentMethod')
         toast.success(paymentMethod === 'Cash on Delivery'
@@ -109,7 +112,7 @@ const Payment = () => {
                         id="pay_btn"
                         type="submit"
                         className="store-button store-button-dark payment-submit"
-                        disabled={loading || !orderInfo || cartItems.length === 0}
+                        disabled={loading || !orderInfo || checkoutItems.length === 0}
                     >
                         {loading ? 'Placing order...' : 'Place order'}
                     </button>

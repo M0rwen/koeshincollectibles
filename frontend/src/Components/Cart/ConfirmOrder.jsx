@@ -3,13 +3,15 @@ import MetaData from '../Layout/MetaData'
 import CheckoutSteps from './CheckoutSteps'
 import { calculateOrderTotals, formatCurrency } from '../../Utils/helpers'
 import { useSelector } from 'react-redux'
+import { getCheckoutItems } from '../../Utils/checkout'
 const ConfirmOrder = () => {
     // const [user, setUser] = useState(getUser() ? getUser() : {})
     let navigate = useNavigate();
     const { cartItems, shippingInfo } = useSelector(state => state.cart)
     const { user } = useSelector(state => state.auth)
+    const checkoutItems = getCheckoutItems(cartItems)
     // Calculate Order Prices
-    const { itemsPrice, shippingPrice, taxPrice, totalPrice } = calculateOrderTotals(cartItems)
+    const { itemsPrice, shippingPrice, taxPrice, totalPrice } = calculateOrderTotals(checkoutItems)
 
     const processToPayment = () => {
         const data = {
@@ -35,9 +37,9 @@ const ConfirmOrder = () => {
                     <p className="mb-4"><b>Address:</b> {`${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.postalCode}, ${shippingInfo.country}`}</p>
 
                     <hr />
-                    <h4 className="mt-4">Your Cart Items:</h4>
+                    <h4 className="mt-4">Items in this order:</h4>
 
-                    {cartItems.map(item => (
+                    {checkoutItems.map(item => (
                         <div className="cart-item my-1" key={item.product}>
                             <hr />
                             <div className="row">
