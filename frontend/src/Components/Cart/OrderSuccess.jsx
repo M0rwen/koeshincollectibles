@@ -25,6 +25,16 @@ const OrderSuccess = () => {
                             <p><strong>Total: {formatCurrency(totals.totalPrice)}</strong></p>
                         </div>
                     )}
+                    {receipt && (
+                        <div className="order-success-payment">
+                            <p><strong>{receipt.paymentMethod === 'Demo payment' && receipt.paymentInfo?.status === 'succeeded'
+                                ? 'Paid (demo payment)'
+                                : receipt.paymentInfo?.status === 'succeeded' ? 'Paid on delivery.' : 'Pay on delivery.'}</strong></p>
+                            {receipt.paidAt && <p>Paid: {new Date(receipt.paidAt).toLocaleString()}</p>}
+                            {receipt.paymentInfo?.reference && <p>Payment reference: {receipt.paymentInfo.reference}</p>}
+                            {receipt.paymentMethod === 'Demo payment' && <p>Demo payment, no real charge.</p>}
+                        </div>
+                    )}
                     {receipt?.orderReference && (
                         <>
                             <p className="order-reference-label">Order reference</p>

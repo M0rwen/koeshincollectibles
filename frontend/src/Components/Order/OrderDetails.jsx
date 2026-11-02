@@ -94,7 +94,12 @@ const OrderDetails = () => {
 
                             <h4 className="my-4">Payment</h4>
                             <p><b>Method:</b> {paymentMethod || 'Not recorded'}</p>
-                            <p className={isPaid ? "greenColor" : "redColor"}><b>{isPaid ? "PAID" : paymentInfo?.status === 'pending' ? 'PENDING' : 'NOT PAID'}</b></p>
+                            <p className={isPaid ? "greenColor" : "redColor"}><b>{isPaid
+                                ? paymentMethod === 'Demo payment' ? 'Paid (demo payment)' : 'Paid on delivery.'
+                                : paymentMethod === 'Cash on Delivery' ? 'Pay on delivery.' : 'Payment pending'}</b></p>
+                            {order.paidAt && <p><b>Paid date:</b> {new Date(order.paidAt).toLocaleString()}</p>}
+                            {order.paymentInfo?.reference && <p><b>Payment reference:</b> {order.paymentInfo.reference}</p>}
+                            {paymentMethod === 'Demo payment' && <p>Demo payment, no real charge.</p>}
 
 
                             <h4 className="my-4">Order Status:</h4>

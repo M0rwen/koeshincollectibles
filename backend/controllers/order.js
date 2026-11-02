@@ -1,6 +1,7 @@
 ﻿const Order = require('../models/order');
 const Product = require('../models/product');
 const mongoose = require('mongoose');
+const { randomUUID } = require('crypto')
 const sendEmail = require('../utils/sendEmail');
 const createOrderReceiptPdf = require('../utils/orderReceipt');
 const User = require('../models/user');
@@ -19,9 +20,12 @@ exports.newOrder = async (req, res, next) => {
     const {
         orderItems,
         shippingInfo,
-        paymentInfo,
         paymentMethod
     } = req.body;
+
+    if (!['Cash on Delivery', 'Demo payment'].includes(paymentMethod)) {
+        return res.status(400).json({ message: 'Please select a valid payment method' })
+    }
 
     if (!Array.isArray(orderItems) || orderItems.length === 0) {
         return res.status(400).json({ message: 'Please add at least one item to your order' })
@@ -55,14 +59,17 @@ exports.newOrder = async (req, res, next) => {
     }
 
     const totals = calculateOrderTotals(trustedOrderItems)
+    const isDemoPayment = paymentMethod === 'Demo payment'
+    const paymentReference = isDemoPayment ? `DEMO-${randomUUID().toUpperCase()}` : undefined
     const order = new Order({
         orderItems: trustedOrderItems,
         shippingInfo,
         ...totals,
-        paymentInfo,
+        paymentInfo: isDemoPayment
+            ? { status: 'succeeded', reference: paymentReference }
+            : { status: 'pending' },
         paymentMethod,
-        paidAt: !['Cash on Delivery', 'Card (demo only)'].includes(paymentMethod)
-            && paymentInfo?.status === 'succeeded' ? Date.now() : undefined,
+        paidAt: isDemoPayment ? Date.now() : undefined,
         user: req.user._id
     })
     order.orderReference = `KC-${order._id.toString().toUpperCase()}`
@@ -70,8 +77,11 @@ exports.newOrder = async (req, res, next) => {
 
     const customer = { name: req.user.name, email: req.user.email }
     const paymentNote = paymentMethod === 'Cash on Delivery'
-        ? 'Payment is pending and due on delivery.'
-        : 'Payment is pending; this demo order did not process a card payment.'
+        ? 'Pay on delivery.'
+        : 'Paid (demo payment). Demo payment, no real charge.'
+    const paymentDate = order.paidAt
+        ? new Date(order.paidAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
+        : null
     const emailItems = order.orderItems.map(item => (
         `${escapeHtml(item.name)} (Qty ${item.quantity}) — PHP ${Number(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
     )).join('<br>')
@@ -99,7 +109,9 @@ exports.newOrder = async (req, res, next) => {
                 Shipping: PHP ${Number(order.shippingPrice).toFixed(2)}<br>
                 Tax: PHP ${Number(order.taxPrice).toFixed(2)}<br>
                 Total: PHP ${Number(order.totalPrice).toFixed(2)}<br>
-                Payment status: Pending.<br>
+                Payment status: ${isDemoPayment ? 'Paid (demo payment)' : 'Pending'}.<br>
+                ${paymentDate ? `Paid date: ${escapeHtml(paymentDate)}<br>` : ''}
+                ${isDemoPayment ? `Payment reference: ${escapeHtml(paymentReference)}<br>` : ''}
                 ${paymentNote}<br><br>
                 You can view your order in your Koeshin's Collectibles account.
             `,
@@ -249,8 +261,8 @@ exports.updateOrder = async (req, res, next) => {
 
             const statusColor = nextStatus === 'Delivered' ? '#22863a' : nextStatus === 'Shipped' ? '#0366d6' : '#6f42c1'
             const receiptPayment = order.paymentMethod === 'Cash on Delivery'
-                ? (nextStatus === 'Delivered' ? 'Payment received on delivery.' : 'Payment is due on delivery.')
-                : 'No payment was processed for this demo-card order.'
+                ? (order.paymentInfo?.status === 'succeeded' ? 'Paid on delivery.' : 'Pay on delivery.')
+                : 'Paid (demo payment). Demo payment, no real charge.'
             let receipt
 
             try {
@@ -292,7 +304,9 @@ exports.updateOrder = async (req, res, next) => {
                                 Tax: PHP ${totals.taxPrice.toFixed(2)}<br>
                                 <strong>Total: PHP ${totals.totalPrice.toFixed(2)}</strong>
                             </p>
-                            <p>${receiptPayment}</p>
+                            <p>Payment: ${escapeHtml(receiptPayment)}</p>
+                            ${order.paidAt ? `<p>Paid date: ${escapeHtml(new Date(order.paidAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }))}</p>` : ''}
+                            ${order.paymentInfo?.reference ? `<p>Payment reference: ${escapeHtml(order.paymentInfo.reference)}</p>` : ''}
                             <p style="color:#666;font-size:0.9em">${receipt
                                 ? 'Your PDF receipt is attached for safekeeping.'
                                 : 'Your order details are available in your order history.'}</p>

@@ -105,28 +105,12 @@ const Home = () => {
             return
         }
         if (priceRangeInvalid) return
-        if (isCollectionsPage || isHomePage) {
-            let cancelled = false
-            const loadCatalog = async () => {
-                let page = 1
-                let result
-                do {
-                    result = await dispatch(getProducts(page, keyword, price, category, rating))
-                    if (cancelled || !result) return
-                    page += 1
-                } while (result.resPerPage > 0 && page <= Math.ceil(result.filteredProductsCount / result.resPerPage))
-            }
-            void loadCatalog()
-            return () => {
-                cancelled = true
-            }
-        }
         dispatch(getProducts(currentPage, keyword, price, category, rating))
-    }, [currentPage, keyword, price, category, rating, priceRangeInvalid, isCollectionsPage, isHomePage, catalogRetry, dispatch, catalogFilterKey])
+    }, [currentPage, keyword, price, category, rating, priceRangeInvalid, catalogRetry, dispatch, catalogFilterKey])
 
     useEffect(() => {
         const sentinel = sentinelRef.current
-        if (isCollectionsPage || isHomePage || !sentinel || loading || error || !hasMore) return
+        if (isHomePage || !sentinel || loading || error || !hasMore) return
 
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting) {
@@ -136,7 +120,7 @@ const Home = () => {
 
         observer.observe(sentinel)
         return () => observer.disconnect()
-    }, [error, hasMore, isCollectionsPage, isHomePage, loading])
+    }, [error, hasMore, isHomePage, loading])
 
     const updateCatalogUrl = (updates, { replace = false } = {}) => {
         const params = new URLSearchParams(search)
@@ -205,6 +189,7 @@ const Home = () => {
                             <Link className="landing-cta" to={newestFind ? `/product/${newestFind._id}` : '/shop'}>
                                 {newestFind ? 'Meet the newest find' : 'Explore the shop'} <span aria-hidden="true">→</span>
                             </Link>
+                            <Link className="landing-text-link landing-shop-all" to="/shop">Shop all products <span aria-hidden="true">→</span></Link>
                         </div>
                         <div className="landing-drop-display">
                             <span className="landing-display-note">FOUND WITH<br />A LITTLE MAGIC</span>
@@ -462,12 +447,6 @@ const Home = () => {
                                     </button>
                                 </div>
                             )}
-                            {error && products.length > 0 && isCollectionsPage && (
-                                <div className="infinite-error" role="alert">
-                                    <span>Some products couldn't load: {error}</span>
-                                    <button type="button" onClick={retryProducts}>Retry</button>
-                                </div>
-                            )}
                             {error && currentPage > 1 && (
                                 <div className="infinite-error" role="alert">
                                     <span>More finds couldn't load.</span>
@@ -475,7 +454,7 @@ const Home = () => {
                                 </div>
                             )}
                             {loading && currentPage > 1 && <div className="infinite-loading" role="status"><span className="loading-mark" />Loading more finds...</div>}
-                            {!isCollectionsPage && !loading && !error && hasMore && <div ref={sentinelRef} className="infinite-sentinel" aria-hidden="true" />}
+                            {!isHomePage && !loading && !error && hasMore && <div ref={sentinelRef} className="infinite-sentinel" aria-hidden="true" />}
                             {!loading && !hasMore && products.length > 0 && <p className="collection-end">You've reached the end of this collection.</p>}
                         </div>
                     </div>

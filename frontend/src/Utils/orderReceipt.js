@@ -15,8 +15,12 @@ const phpAmount = amount => `PHP ${Number(amount || 0).toLocaleString('en-PH', {
 })}`
 
 const paymentStatus = order => {
-    if (['Cash on Delivery', 'Card (demo only)'].includes(order.paymentMethod)) return 'Pending'
-    return order.paymentInfo?.status === 'succeeded' ? 'Paid' : 'Pending'
+    if (order.paymentMethod === 'Cash on Delivery') {
+        return order.paymentInfo?.status === 'succeeded' || order.paidAt
+            ? 'Paid on delivery.'
+            : 'Pay on delivery.'
+    }
+    return order.paymentInfo?.status === 'succeeded' ? 'Paid (demo payment)' : 'Pending'
 }
 
 const loadMascot = async () => {
@@ -110,7 +114,24 @@ export const createOrderReceipt = async (order) => {
     pdf.setFontSize(9)
     pdf.setTextColor(...colors.coral)
     pdf.text(paymentStatus(order), rightColumn, y + 5)
-    y += 16
+    if (order.paidAt) {
+        drawDetail('Paid date', new Date(order.paidAt).toLocaleString('en-PH', {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        }), leftColumn, y + 16, columnWidth)
+    }
+    if (order.paymentInfo?.reference) {
+        drawDetail('Payment reference', order.paymentInfo.reference, rightColumn, y + 16, columnWidth)
+    }
+    y += 30
+
+    if (order.paymentMethod === 'Demo payment') {
+        pdf.setFont('helvetica', 'italic')
+        pdf.setFontSize(8)
+        pdf.setTextColor(...colors.muted)
+        pdf.text('Demo payment, no real charge.', margin, y)
+        y += 8
+    }
 
     const columns = {
         name: margin + 3,

@@ -52,6 +52,9 @@ const ListOrders = () => {
                         const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'
                         const delivered = String(order.orderStatus || '').includes('Delivered')
                         const totals = calculateOrderTotals(items)
+                        const paymentLabel = order.paymentMethod === 'Demo payment' && order.paymentInfo?.status === 'succeeded'
+                            ? 'Paid (demo payment)'
+                            : order.paymentInfo?.status === 'succeeded' ? 'Paid on delivery.' : 'Pay on delivery.'
 
                         return (
                             <article className="customer-order-row" key={order._id}>
@@ -74,8 +77,10 @@ const ListOrders = () => {
                                     <span className={delivered ? 'customer-order-status is-delivered' : 'customer-order-status'}>
                                         {order.orderStatus || 'Processing'}
                                     </span>
+                                    <span className="customer-order-payment">{paymentLabel}</span>
+                                    {order.paidAt && <time>Paid {new Date(order.paidAt).toLocaleDateString()}</time>}
                                     <strong>{formatCurrency(totals.totalPrice)}</strong>
-                                    <time>{date}</time>
+                                    <time>Ordered {date}</time>
                                 </div>
                                 <Link className="customer-order-view" to={`/order/${order._id}`}>View</Link>
                             </article>

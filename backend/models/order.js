@@ -65,11 +65,14 @@ const orderSchema = mongoose.Schema({
         },
         status: {
             type: String
+        },
+        reference: {
+            type: String
         }
     },
     paymentMethod: {
         type: String,
-        enum: ['Cash on Delivery', 'Card (demo only)'],
+        enum: ['Cash on Delivery', 'Demo payment'],
         required: true,
         default: 'Cash on Delivery'
     },
