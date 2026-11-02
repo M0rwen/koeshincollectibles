@@ -5,7 +5,6 @@ const {
     newProduct,
     getSingleProduct,
     getProducts,
-    getProductSuggestions,
     getAdminProducts,
 
     updateProduct,
@@ -29,7 +28,6 @@ router.delete('/admin/product/:id', isAuthenticatedUser, authorizeRoles('admin')
 router.put('/admin/product/:id/restore', isAuthenticatedUser, authorizeRoles('admin'), restoreProduct);
 
 router.get('/products', getProducts)
-router.get('/products/suggest', getProductSuggestions)
 
 router.put('/review', isAuthenticatedUser, createProductReview);
 router.get('/reviews', isAuthenticatedUser, getProductReviews)

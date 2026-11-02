@@ -8,14 +8,16 @@ class APIFeatures {
     // http://localhost:2173?keyword=apple&price[]
     // http://localhost:4001/api/v1/products?page=1&keyword=apple&price[lte]=1000&price[gte]=10
     search() {
-        const keyword = this.queryStr.keyword ? {
-            name: {
-                $regex: this.queryStr.keyword,
-                $options: 'i'
-            }
+        const keyword = String(this.queryStr.keyword || '').trim().slice(0, 80)
+        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const searchFilter = keyword ? {
+            $or: [
+                { name: { $regex: escapedKeyword, $options: 'i' } },
+                { category: { $regex: escapedKeyword, $options: 'i' } }
+            ]
         } : {}
         console.log(this.query, this.queryStr);
-        this.query = this.query.find({ ...keyword });
+        this.query = this.query.find(searchFilter);
         return this;
     }
 

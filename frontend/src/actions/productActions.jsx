@@ -63,7 +63,7 @@ export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], cat
         dispatch({
             type: ALL_PRODUCTS_FAIL,
             payload: error.response?.data?.message || error.message,
-            meta: { queryKey }
+            meta: { queryKey, page: currentPage }
         })
     }
 }

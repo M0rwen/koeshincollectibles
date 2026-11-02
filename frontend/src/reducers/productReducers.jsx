@@ -36,7 +36,9 @@ export const productsReducer = (state = { products: [] }, action) => {
                 ...state,
                 loading: true,
                 loadingMore: (action.payload?.page ?? 1) > 1 && action.payload?.queryKey === state.queryKey,
-                products: (action.payload?.page ?? 1) === 1 || action.payload?.queryKey !== state.queryKey ? [] : state.products,
+                products: (action.payload?.page ?? 1) === 1 && action.payload?.queryKey === state.queryKey
+                    ? []
+                    : state.products,
                 queryKey: action.payload?.queryKey,
                 error: null
             }
@@ -80,6 +82,7 @@ export const productsReducer = (state = { products: [] }, action) => {
                 ...state,
                 loading: false,
                 loadingMore: false,
+                products: action.meta?.page === 1 ? [] : state.products,
                 error: action.payload
             }
         case ADMIN_PRODUCTS_FAIL:
