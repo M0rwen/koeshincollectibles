@@ -5,7 +5,6 @@ import Loader from '../Layout/Loader'
 import Sidebar from './SideBar'
 
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 // import axios from 'axios'
 // import { getToken } from '../../Utils/helpers'
 import { useDispatch, useSelector } from 'react-redux'

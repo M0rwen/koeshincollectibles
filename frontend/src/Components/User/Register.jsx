@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useFormik } from 'formik'
 import MetaData from '../Layout/MetaData'
 import axios from 'axios'
 import { toast } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
 import { useDispatch, useSelector } from 'react-redux'
 import { loginWithGoogle } from '../../actions/userActions'
 import { registerSchema } from '../../validation/schemas'
+import AuthLayout from './AuthLayout'
 
 // Firebase popup helpers
 import { signInWithPopup } from 'firebase/auth'
@@ -94,10 +94,12 @@ const Register = () => {
         <>
             <MetaData title={'Register User'} />
 
-            <div className="row wrapper">
-                <div className="col-10 col-lg-5">
-                    <form className="shadow-lg" onSubmit={formik.handleSubmit} encType='multipart/form-data' noValidate>
-                        <h1 className="mb-3">Register</h1>
+            <AuthLayout
+                eyebrow="MAKE YOURSELF AT HOME"
+                title="Create an account"
+                description="Find your next favorite thing."
+            >
+                    <form className="auth-form auth-form-register" onSubmit={formik.handleSubmit} encType='multipart/form-data' noValidate>
 
                         {error && (
                             <div className="alert alert-danger" role="alert">{error}</div>
@@ -188,7 +190,7 @@ const Register = () => {
                             {formik.touched.password && formik.errors.password && <div className="field-error" id="password_error" role="alert">{formik.errors.password}</div>}
                         </div>
 
-                        <div className='form-group'>
+                        <div className='form-group auth-avatar-group'>
                             <label htmlFor='avatar_upload'>Avatar</label>
                             <div className='d-flex align-items-center'>
                                 <div>
@@ -219,34 +221,19 @@ const Register = () => {
                         <button
                             id="register_button"
                             type="submit"
-                            className="btn btn-block py-3"
+                            className="btn auth-submit-button"
                             disabled={!formik.isValid || formik.isSubmitting}
                         >
                             {formik.isSubmitting ? 'REGISTERING…' : 'REGISTER'}
                         </button>
 
                         {/* ── Or register with Google ── */}
-                        <div
-                            className="text-center my-3"
-                            style={{ color: '#888', fontSize: '0.85rem' }}
-                        >
-                            or
-                        </div>
+                        <div className="auth-divider"><span>or</span></div>
 
                         <button
                             id="google_register_button"
                             type="button"
-                            className="btn btn-block py-2"
-                            style={{
-                                border: '1px solid #dadce0',
-                                background: '#fff',
-                                color: '#3c4043',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '10px',
-                                fontWeight: 500,
-                            }}
+                            className="btn auth-google-button"
                             onClick={googleHandler}
                         >
                             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -258,9 +245,9 @@ const Register = () => {
                             Continue with Google
                         </button>
 
+                        <p className="auth-switch-link">Already have an account? <Link to="/login">Sign in</Link></p>
                     </form>
-                </div>
-            </div>
+            </AuthLayout>
 
         </>
     )

@@ -3,8 +3,6 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
 import { Carousel } from 'react-bootstrap'
 
-import 'react-toastify/dist/ReactToastify.css';
-
 import { formatCurrency } from '../../Utils/helpers'
 import { startBuyNowCheckout, getPendingBuyNow, clearPendingBuyNow, setPendingBuyNow } from '../../Utils/checkout'
 import ListReviews from '../Review/ListReviews';

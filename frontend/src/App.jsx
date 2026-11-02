@@ -265,8 +265,6 @@ function App() {
         className="shop-toast-container"
         position="bottom-right"
         theme={theme}
-        toastClassName="shop-toast"
-        progressClassName="shop-toast-progress"
       />
     </>
   )

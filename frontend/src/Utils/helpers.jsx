@@ -1,5 +1,4 @@
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import orderPricing from '../../../shared/order-pricing.json'
 
 export const SHIPPING_PRICE = orderPricing.shippingPrice

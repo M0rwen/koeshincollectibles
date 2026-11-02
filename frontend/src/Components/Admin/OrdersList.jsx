@@ -5,7 +5,6 @@ import MetaData from '../Layout/MetaData'
 import Loader from '../Layout/Loader'
 import Sidebar from './SideBar'
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import { DataGrid, } from '@mui/x-data-grid'
 // import { getToken } from '../../Utils/helpers'
 // import axios from 'axios'

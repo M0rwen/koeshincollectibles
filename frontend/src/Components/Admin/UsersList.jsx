@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import 'react-toastify/dist/ReactToastify.css';
 
 import MetaData from '../Layout/MetaData'
 import Loader from '../Layout/Loader'

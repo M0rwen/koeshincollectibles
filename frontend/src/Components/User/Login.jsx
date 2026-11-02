@@ -5,11 +5,11 @@ import { useFormik } from 'formik'
 import Loader from '../Layout/Loader'
 import MetaData from '../Layout/MetaData'
 import { toast } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
 import { useDispatch, useSelector } from 'react-redux'
 import { login, loginWithGoogle, clearErrors } from '../../actions/userActions'
 import { loginSchema } from '../../validation/schemas'
 import { getPendingBuyNow } from '../../Utils/checkout'
+import AuthLayout from './AuthLayout'
 
 // Firebase popup helpers
 import { signInWithPopup } from 'firebase/auth'
@@ -70,10 +70,12 @@ const Login = () => {
                 <>
                     <MetaData title={'Login'} />
 
-                    <div className="row wrapper">
-                        <div className="col-10 col-lg-5">
-                            <form className="shadow-lg" onSubmit={formik.handleSubmit} noValidate>
-                                <h1 className="mb-3">Login</h1>
+                    <AuthLayout
+                        eyebrow="WELCOME BACK"
+                        title="Sign in"
+                        description="A cabinet of curiosities, online."
+                    >
+                        <form className="auth-form" onSubmit={formik.handleSubmit} noValidate>
 
                                 <div className="form-group">
                                     <label htmlFor="identifier_field">Username or Email</label>
@@ -118,34 +120,19 @@ const Login = () => {
                                 <button
                                     id="login_button"
                                     type="submit"
-                                    className="btn btn-block py-3"
+                                    className="btn auth-submit-button"
                                     disabled={!formik.isValid || formik.isSubmitting || loading}
                                 >
                                     {formik.isSubmitting || loading ? 'LOGGING IN…' : 'LOGIN'}
                                 </button>
 
                                 {/* ── Google button ── */}
-                                <div
-                                    className="text-center my-3"
-                                    style={{ color: '#888', fontSize: '0.85rem' }}
-                                >
-                                    or
-                                </div>
+                                <div className="auth-divider"><span>or</span></div>
 
                                 <button
                                     id="google_login_button"
                                     type="button"
-                                    className="btn btn-block py-2"
-                                    style={{
-                                        border: '1px solid #dadce0',
-                                        background: '#fff',
-                                        color: '#3c4043',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '10px',
-                                        fontWeight: 500,
-                                    }}
+                                    className="btn auth-google-button"
                                     onClick={googleHandler}
                                 >
                                     {/* Inline Google "G" logo — no extra image file needed */}
@@ -158,10 +145,9 @@ const Login = () => {
                                     Continue with Google
                                 </button>
 
-                                <Link to="/register" className="float-right mt-3">New User?</Link>
-                            </form>
-                        </div>
-                    </div>
+                                <p className="auth-switch-link">New to the shop? <Link to="/register">Create an account</Link></p>
+                        </form>
+                    </AuthLayout>
                 </>
             )}
         </>

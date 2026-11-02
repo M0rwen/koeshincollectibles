@@ -143,6 +143,26 @@ exports.getProducts = async (req, res) => {
     // })
 }
 
+exports.getProductSuggestions = async (req, res) => {
+    const keyword = String(req.query.keyword || '').trim().slice(0, 80)
+    if (keyword.length < 2) {
+        return res.status(200).json({ success: true, products: [] })
+    }
+
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const products = await Product.find({
+        isDeleted: { $ne: true },
+        $or: [
+            { name: { $regex: escapedKeyword, $options: 'i' } },
+            { category: { $regex: escapedKeyword, $options: 'i' } }
+        ]
+    })
+        .select('name category price images')
+        .limit(6)
+
+    return res.status(200).json({ success: true, products })
+}
+
 exports.getSingleProduct = async (req, res, next) => {
     const product = await Product.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!product) {
