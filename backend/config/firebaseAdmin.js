@@ -5,8 +5,15 @@ const { initializeApp, getApps, cert } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const path = require('path');
 
-// Load the service-account key — contents are never logged or printed.
-const serviceAccount = require(path.join(__dirname, 'firebase-service-account.json'));
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+    ? (() => {
+        try {
+            return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+        } catch {
+            throw new Error('FIREBASE_SERVICE_ACCOUNT must contain valid JSON')
+        }
+    })()
+    : require(path.join(__dirname, 'firebase-service-account.json'));
 
 // Guard against double-initialisation (e.g. hot-reload in dev)
 if (getApps().length === 0) {

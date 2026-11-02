@@ -35,7 +35,7 @@ export const productsReducer = (state = { products: [] }, action) => {
             return {
                 ...state,
                 loading: true,
-                loadingMore: (action.payload?.page ?? 1) > 1 && action.payload?.queryKey === state.queryKey,
+                loadingMore: Boolean(action.payload?.append) && action.payload?.queryKey === state.queryKey,
                 products: (action.payload?.page ?? 1) === 1 && action.payload?.queryKey === state.queryKey
                     ? []
                     : state.products,
@@ -46,7 +46,8 @@ export const productsReducer = (state = { products: [] }, action) => {
             return {
                 ...state,
                 loading: true,
-                products: []
+                products: [],
+                error: null
             }
         case ALL_PRODUCTS_SUCCESS: {
             if (action.meta?.queryKey !== state.queryKey) return state
@@ -67,7 +68,8 @@ export const productsReducer = (state = { products: [] }, action) => {
             return {
                 ...state,
                 loading: false,
-                products: action.payload
+                products: action.payload,
+                error: null
             }
         case UPDATE_PRODUCT_SUCCESS:
             return {
@@ -167,6 +169,7 @@ export const newProductReducer = (state = { product: {} }, action) => {
 
             return {
                 ...state,
+                loading: false,
                 error: action.payload
             }
         case NEW_PRODUCT_RESET:

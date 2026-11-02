@@ -67,7 +67,7 @@ const Register = () => {
     const register = async (userData) => {
         try {
             const config = { headers: { 'Content-Type': 'multipart/form-data' } }
-            await axios.post(`http://localhost:4001/api/v1/register`, userData, config)
+            await axios.post(`${import.meta.env.VITE_API}/register`, userData, config)
             navigate('/')
         } catch (error) {
             setError(error.response?.data?.message || 'Registration failed')

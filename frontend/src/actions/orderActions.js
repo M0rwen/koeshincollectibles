@@ -106,7 +106,6 @@ export const allOrders = (deleted = false) => async (dispatch) => {
 }
 
 export const updateOrder = (id, orderData) => async (dispatch) => {
-    console.log(orderData)
     try {
         dispatch({ type: UPDATE_ORDER_REQUEST })
         const config = {

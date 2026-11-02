@@ -4304,6 +4304,58 @@ select:autofill {
   margin-top: 8px;
 }
 
+.landing-page-products {
+  width: min(100% - 48px, 1360px);
+  margin: 0 auto;
+  padding: 44px 0;
+}
+
+.landing-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.landing-page-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.landing-pagination .store-button {
+  min-width: 44px;
+  border: 1px solid var(--shop-line);
+  color: var(--shop-ink);
+  background: var(--shop-surface);
+}
+
+.landing-pagination .store-button.is-current {
+  border-color: var(--shop-green);
+  color: var(--shop-accent-ink);
+  background: var(--shop-green);
+}
+
+.landing-pagination .store-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+@media (max-width: 600px) {
+  .landing-page-products {
+    width: min(100% - 32px, 1360px);
+    padding: 28px 0;
+  }
+
+  .landing-pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
 .collection-shortcuts {
   padding-block: 18px 4px;
   border-bottom: 0;

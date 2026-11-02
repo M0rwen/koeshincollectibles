@@ -71,14 +71,11 @@ export const login = (identifier, password) => async (dispatch) => {
         }
 
         const { data } = await api.post(`${import.meta.env.VITE_API}/login`, { identifier, password }, config)
-        console.log(data.user)
         dispatch({
             type: LOGIN_SUCCESS,
             payload: data.user
         })
     } catch (error) {
-        console.log(error.response.data.message)
-
         dispatch({
             type: LOGIN_FAIL,
             payload: error.response.data.message
@@ -167,7 +164,6 @@ export const updateProfile = (userData) => async (dispatch) => {
             payload: data.success
         })
     } catch (error) {
-        console.log(error)
         dispatch({
             type: UPDATE_PROFILE_FAIL,
             payload: error.response.data.message

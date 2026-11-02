@@ -30,7 +30,7 @@ import {
     CLEAR_ERRORS
 } from '../constants/productConstants';
 
-export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], category = '', rating = '') => async (dispatch) => {
+export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], category = '', rating = '', reviewCount = '', append = currentPage > 1) => async (dispatch) => {
     let queryKey = ''
     try {
         const filters = new URLSearchParams()
@@ -39,6 +39,7 @@ export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], cat
         if (price[1] !== '' && Number.isFinite(Number(price[1]))) filters.set('price[lte]', String(price[1]))
         if (category) filters.set('category', category)
         if (rating) filters.set('ratings[gte]', rating)
+        if (reviewCount) filters.set('numOfReviews[gte]', reviewCount)
         queryKey = filters.toString()
 
         const query = new URLSearchParams(filters)
@@ -46,16 +47,15 @@ export const getProducts = (currentPage = 1, keyword = '', price = ['', ''], cat
 
         dispatch({
             type: ALL_PRODUCTS_REQUEST,
-            payload: { page: currentPage, queryKey }
+            payload: { page: currentPage, queryKey, append }
         })
 
         const link = `${import.meta.env.VITE_API}/products?${query.toString()}`
         const { data } = await api.get(link)
-        console.log(data)
         dispatch({
             type: ALL_PRODUCTS_SUCCESS,
             payload: data,
-            meta: { append: currentPage > 1, queryKey }
+            meta: { append, queryKey }
         })
         return data
 
@@ -123,7 +123,7 @@ export const getAdminProducts = (deleted = false) => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: ADMIN_PRODUCTS_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || error.message || 'Unable to load products'
         })
     }
 }

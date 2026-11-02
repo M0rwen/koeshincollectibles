@@ -35,12 +35,14 @@ const productSchema = new mongoose.Schema({
     price: {
         type: Number,
         required: [true, 'Please enter product price'],
+        min: [Number.MIN_VALUE, 'Product price must be greater than zero'],
         maxLength: [5, 'Product name cannot exceed 5 characters'],
         default: 0.0
     },
     description: {
         type: String,
         required: [true, 'Please enter product description'],
+        trim: true,
     },
     ratings: {
         type: Number,
@@ -80,6 +82,11 @@ const productSchema = new mongoose.Schema({
     stock: {
         type: Number,
         required: [true, 'Please enter product stock'],
+        min: [0, 'Product stock must be 0 or more'],
+        validate: {
+            validator: Number.isInteger,
+            message: 'Product stock must be a whole number'
+        },
         maxLength: [5, 'Product name cannot exceed 5 characters'],
         default: 0
     },

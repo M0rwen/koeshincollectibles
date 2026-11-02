@@ -108,7 +108,6 @@ const UsersList = () => {
             renderCell: (params) => (
 
                 <>
-                    {console.log(params)}
                     {showDeleted
                         ? <button className="btn btn-success py-1 px-2" onClick={() => restoreUser(params.id)}>Restore</button>
                         : <>

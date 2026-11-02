@@ -13,22 +13,19 @@ const NewPassword = () => {
     const [success, setSuccess] = useState(false)
 
     let { token } = useParams();
-    console.log(token)
 
     const resetPassword = async (token, passwords) => {
-        console.log(passwords)
         try {
             const config = {
                 headers: {
                     'Content-Type': 'application/json'
                 }
             }
-            const { data } = await axios.put(`http://localhost:4001/api/v1/password/reset/${token}`, passwords, config)
+            const { data } = await axios.put(`${import.meta.env.VITE_API}/password/reset/${token}`, passwords, config)
             
             setSuccess(data.success)
         } catch (error) {
-            console.log(error)
-            setError(error)
+            setError(error.response?.data?.message || error.message || 'Password reset failed.')
         }
     }
     useEffect(() => {
@@ -48,10 +45,7 @@ const NewPassword = () => {
 
     const submitHandler = (e) => {
         e.preventDefault();
-        const formData = new FormData();
-        formData.set('password', password);
-        formData.set('confirmPassword', confirmPassword);
-        resetPassword(token, formData)
+        resetPassword(token, { password, confirmPassword })
     }
 
     return (

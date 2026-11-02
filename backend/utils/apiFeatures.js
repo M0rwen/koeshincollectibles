@@ -16,7 +16,6 @@ class APIFeatures {
                 { category: { $regex: escapedKeyword, $options: 'i' } }
             ]
         } : {}
-        console.log(this.query, this.queryStr);
         this.query = this.query.find(searchFilter);
         return this;
     }
@@ -26,7 +25,7 @@ class APIFeatures {
         const queryCopy = { ...this.queryStr };
         // console.log(queryCopy);
         // Removing fields from the query
-        const removeFields = ['keyword', 'page', 'isDeleted', 'deletedAt'];
+        const removeFields = ['keyword', 'page', 'isDeleted', 'deletedAt', 'numOfReviews[gte]'];
         removeFields.forEach(el => delete queryCopy[el]);
 
         let priceFilter = {};
@@ -55,6 +54,11 @@ class APIFeatures {
             delete queryCopy['ratings[lte]'];
         }
 
+        const minimumReviews = Number(this.queryStr['numOfReviews[gte]']);
+        const reviewCountFilter = Number.isInteger(minimumReviews) && minimumReviews >= 0
+            ? { numOfReviews: { $gte: minimumReviews } }
+            : {};
+
         const filters = { ...queryCopy };
         Object.keys(filters).forEach(key => {
             if (filters[key] === undefined || filters[key] === '') {
@@ -62,7 +66,7 @@ class APIFeatures {
             }
         });
 
-        const finalFilter = { ...filters, ...priceFilter, ...ratingFilter };
+        const finalFilter = { ...filters, ...priceFilter, ...ratingFilter, ...reviewCountFilter };
         this.query = this.query.find(finalFilter);
         return this;
     }

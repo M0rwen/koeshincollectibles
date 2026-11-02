@@ -32,30 +32,44 @@ exports.newOrder = async (req, res, next) => {
     }
 
     const trustedOrderItems = []
-    for (const item of orderItems) {
-        const productId = item.product && typeof item.product === 'object'
-            ? item.product._id
-            : item.product
-        const quantity = Number(item.quantity)
-        if (!mongoose.Types.ObjectId.isValid(productId) || !Number.isInteger(quantity) || quantity < 1) {
-            return res.status(400).json({ message: 'One or more order items are invalid' })
-        }
+    const reservedStock = []
+    try {
+        for (const item of orderItems) {
+            const productId = item.product && typeof item.product === 'object'
+                ? item.product._id
+                : item.product
+            const quantity = Number(item.quantity)
+            if (!mongoose.Types.ObjectId.isValid(productId) || !Number.isInteger(quantity) || quantity < 1) {
+                await releaseReservedStock(reservedStock)
+                return res.status(400).json({ message: 'One or more order items are invalid' })
+            }
 
-        const product = await Product.findOne({ _id: productId, isDeleted: { $ne: true } })
-        if (!product) {
-            return res.status(400).json({ message: 'One or more products in your order are no longer available' })
-        }
-        if (quantity > product.stock) {
-            return res.status(400).json({ message: `${product.name} does not have enough stock` })
-        }
+            const product = await Product.findOneAndUpdate(
+                { _id: productId, isDeleted: { $ne: true }, stock: { $gte: quantity } },
+                { $inc: { stock: -quantity } },
+                { new: true, runValidators: true }
+            )
+            if (!product) {
+                await releaseReservedStock(reservedStock)
+                const availableProduct = await Product.findOne({ _id: productId, isDeleted: { $ne: true } })
+                if (availableProduct) {
+                    return res.status(400).json({ message: `${availableProduct.name} does not have enough stock` })
+                }
+                return res.status(400).json({ message: 'One or more products in your order are no longer available' })
+            }
+            reservedStock.push({ product: product._id, quantity })
 
-        trustedOrderItems.push({
-            name: product.name,
-            quantity,
-            image: product.images?.[0]?.url || item.image,
-            price: product.price,
-            product: product._id
-        })
+            trustedOrderItems.push({
+                name: product.name,
+                quantity,
+                image: product.images?.[0]?.url || item.image,
+                price: product.price,
+                product: product._id
+            })
+        }
+    } catch (error) {
+        await releaseReservedStock(reservedStock)
+        return next(error)
     }
 
     const totals = calculateOrderTotals(trustedOrderItems)
@@ -70,10 +84,16 @@ exports.newOrder = async (req, res, next) => {
             : { status: 'pending' },
         paymentMethod,
         paidAt: isDemoPayment ? Date.now() : undefined,
+        stockDeducted: true,
         user: req.user._id
     })
     order.orderReference = `KC-${order._id.toString().toUpperCase()}`
-    await order.save()
+    try {
+        await order.save()
+    } catch (error) {
+        await releaseReservedStock(reservedStock)
+        return next(error)
+    }
 
     const customer = { name: req.user.name, email: req.user.email }
     const paymentNote = paymentMethod === 'Cash on Delivery'
@@ -154,6 +174,10 @@ exports.getSingleOrder = async (req, res, next) => {
 
         })
     }
+    const ownerId = order.user?._id || order.user
+    if (req.user.role !== 'admin' && ownerId?.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, message: 'You are not authorized to view this order' })
+    }
     res.status(200).json({
         success: true,
         order
@@ -228,8 +252,37 @@ exports.updateOrder = async (req, res, next) => {
         })
     }
 
+    const deliveryReservations = []
     if (nextStatus === 'Delivered') {
-        await Promise.all(order.orderItems.map(item => updateStock(item.product, item.quantity)))
+        if (order.stockDeducted !== true) {
+            try {
+                for (const item of order.orderItems) {
+                    const product = await Product.findOneAndUpdate(
+                        { _id: item.product, isDeleted: { $ne: true }, stock: { $gte: item.quantity } },
+                        { $inc: { stock: -item.quantity } },
+                        { new: true, runValidators: true }
+                    )
+                    if (!product) {
+                        await releaseReservedStock(deliveryReservations)
+                        const availableProduct = await Product.findOne({
+                            _id: item.product,
+                            isDeleted: { $ne: true }
+                        })
+                        return res.status(400).json({
+                            success: false,
+                            message: availableProduct
+                                ? `${item.name} does not have enough stock to complete this legacy order`
+                                : `${item.name} is no longer available to complete this legacy order`
+                        })
+                    }
+                    deliveryReservations.push({ product: product._id, quantity: item.quantity })
+                }
+            } catch (error) {
+                await releaseReservedStock(deliveryReservations)
+                return next(error)
+            }
+            order.stockDeducted = true
+        }
         order.deliveredAt = Date.now()
         if (order.paymentMethod === 'Cash on Delivery') {
             order.paymentInfo = {
@@ -241,7 +294,12 @@ exports.updateOrder = async (req, res, next) => {
     }
 
     order.orderStatus = nextStatus
-    await order.save()
+    try {
+        await order.save()
+    } catch (error) {
+        await releaseReservedStock(deliveryReservations)
+        return next(error)
+    }
 
     // Generate the receipt after saving so email failures cannot undo the status update.
     try {
@@ -332,12 +390,17 @@ exports.updateOrder = async (req, res, next) => {
     })
 }
 
-async function updateStock(id, quantity) {
-    const product = await Product.findOne({ _id: id, isDeleted: { $ne: true } });
-    if (!product) return
-    product.stock = product.stock - quantity;
-
-    await product.save({ validateBeforeSave: false })
+async function releaseReservedStock(reservedStock) {
+    for (const reservation of reservedStock.reverse()) {
+        try {
+            await Product.updateOne(
+                { _id: reservation.product },
+                { $inc: { stock: reservation.quantity } }
+            )
+        } catch (error) {
+            console.error(`Failed to restore reserved stock for product ${reservation.product}:`, error)
+        }
+    }
 }
 
 exports.totalOrders = async (req, res, next) => {
@@ -433,7 +496,6 @@ exports.customerSales = async (req, res, next) => {
         { $sort: { total: -1 } },
 
     ])
-    console.log(customerSales)
     if (!customerSales) {
         return res.status(404).json({
             message: 'error customer sales',
