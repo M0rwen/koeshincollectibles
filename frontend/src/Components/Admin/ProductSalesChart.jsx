@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { getToken } from "../../Utils/helpers";
-import axios from "axios";
+import api from "../../Utils/api";
 import Loader from '../Layout/Loader';
 
 import { PieChart, Pie, Legend, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -53,7 +53,7 @@ export default function ProductSalesChart() {
                 }
             }
 
-            const { data } = await axios.get(`${import.meta.env.VITE_API}/admin/product-sales`, config)
+            const { data } = await api.get(`${import.meta.env.VITE_API}/admin/product-sales`, config)
             setSales(data.totalPercentage)
 
         } catch (error) {

@@ -35,8 +35,10 @@ export const productsReducer = (state = { products: [] }, action) => {
             return {
                 ...state,
                 loading: true,
-                loadingMore: (action.payload?.page ?? 1) > 1 && action.payload?.queryKey === state.queryKey,
-                products: (action.payload?.page ?? 1) === 1 || action.payload?.queryKey !== state.queryKey ? [] : state.products,
+                loadingMore: Boolean(action.payload?.append) && action.payload?.queryKey === state.queryKey,
+                products: (action.payload?.page ?? 1) === 1 && action.payload?.queryKey === state.queryKey
+                    ? []
+                    : state.products,
                 queryKey: action.payload?.queryKey,
                 error: null
             }
@@ -44,7 +46,8 @@ export const productsReducer = (state = { products: [] }, action) => {
             return {
                 ...state,
                 loading: true,
-                products: []
+                products: [],
+                error: null
             }
         case ALL_PRODUCTS_SUCCESS: {
             if (action.meta?.queryKey !== state.queryKey) return state
@@ -65,7 +68,8 @@ export const productsReducer = (state = { products: [] }, action) => {
             return {
                 ...state,
                 loading: false,
-                products: action.payload
+                products: action.payload,
+                error: null
             }
         case UPDATE_PRODUCT_SUCCESS:
             return {
@@ -80,6 +84,7 @@ export const productsReducer = (state = { products: [] }, action) => {
                 ...state,
                 loading: false,
                 loadingMore: false,
+                products: action.meta?.page === 1 ? [] : state.products,
                 error: action.payload
             }
         case ADMIN_PRODUCTS_FAIL:
@@ -164,6 +169,7 @@ export const newProductReducer = (state = { product: {} }, action) => {
 
             return {
                 ...state,
+                loading: false,
                 error: action.payload
             }
         case NEW_PRODUCT_RESET:
@@ -235,17 +241,20 @@ export const productReducer = (state = {}, action) => {
         case BULK_DELETE_PRODUCTS_REQUEST:
             return {
                 ...state,
-                loading: true
+                loading: true,
+                error: null
             }
         case BULK_DELETE_PRODUCTS_SUCCESS:
             return {
                 ...state,
                 loading: false,
-                isBulkDeleted: action.payload.success || true
+                isBulkDeleted: Boolean(action.payload?.success)
             }
         case BULK_DELETE_PRODUCTS_FAIL:
             return {
                 ...state,
+                loading: false,
+                isBulkDeleted: false,
                 error: action.payload
             }
         case BULK_DELETE_PRODUCTS_RESET:

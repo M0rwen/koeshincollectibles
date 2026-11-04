@@ -1,5 +1,5 @@
+import { getAuthToken } from './authToken'
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import orderPricing from '../../../shared/order-pricing.json'
 
 export const SHIPPING_PRICE = orderPricing.shippingPrice
@@ -40,7 +40,6 @@ export const authenticate = (data, next) => {
 export const getUser = () => {
     if (window !== 'undefined') {
         if (sessionStorage.getItem('user')) {
-            console.log(JSON.parse(sessionStorage.getItem('user')))
             return JSON.parse(sessionStorage.getItem('user'));
         } else {
             return false;
@@ -58,13 +57,7 @@ export const logout = next => {
 };
 
 export const getToken = () => {
-    if (window !== 'undefined') {
-        if (sessionStorage.getItem('token')) {
-            return JSON.parse(sessionStorage.getItem('token'));
-        } else {
-            return false;
-        }
-    }
+    return getAuthToken() || false
 };
 
 export const errMsg = (message = '') => toast.error(message, {

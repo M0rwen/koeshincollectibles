@@ -3,18 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { useFormik } from 'formik'
 import MetaData from '../Layout/MetaData'
 import { toast } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
 import { updateProfile, loadUser, clearErrors } from '../../actions/userActions'
 import { UPDATE_PROFILE_RESET } from '../../constants/userConstants'
 import { useDispatch, useSelector } from 'react-redux'
 import { profileSchema } from '../../validation/schemas'
+import ProfileAvatar from './ProfileAvatar'
 
 const UpdateProfile = () => {
     const dispatch = useDispatch()
     const { user } = useSelector(state => state.auth)
     const { error, isUpdated, loading } = useSelector(state => state.user)
     const [avatar, setAvatar] = useState('')
-    const avatarPreview = avatar || user?.avatar?.url || '/images/default_avatar.jpg'
     const navigate = useNavigate()
 
     const formik = useFormik({
@@ -140,7 +139,7 @@ const UpdateProfile = () => {
                             <label htmlFor="avatar_upload">Avatar</label>
                             <div className="d-flex align-items-center">
                                 <figure className="avatar mr-3 item-rtl">
-                                    <img src={avatarPreview} className="rounded-circle" alt="Avatar Preview" />
+                                    <ProfileAvatar user={user} imageUrl={avatar || user?.avatar?.url} className="rounded-circle" />
                                 </figure>
                                 <div className="custom-file">
                                     <input

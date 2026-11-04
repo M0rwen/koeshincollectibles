@@ -11,7 +11,7 @@ import {
     Cell,
 } from "recharts";
 import { getToken } from "../../Utils/helpers";
-import axios from "axios";
+import api from "../../Utils/api";
 import Loader from '../Layout/Loader';
 
 const UserSalesChart = () => {
@@ -28,7 +28,7 @@ const UserSalesChart = () => {
                 }
             }
 
-            const { data } = await axios.get(`${import.meta.env.VITE_API}/admin/customer-sales`, config)
+            const { data } = await api.get(`${import.meta.env.VITE_API}/admin/customer-sales`, config)
             setSales(data.customerSales)
             setLoading(false)
         } catch (error) {

@@ -2,34 +2,30 @@ import  {  useState, useEffect } from 'react'
 import { useNavigate, useParams } from "react-router-dom";
 import MetaData from '../Layout/MetaData'
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import axios from 'axios';
+import api from '../../Utils/api'
+import { storeAuthToken } from '../../Utils/authToken'
+import { useDispatch } from 'react-redux'
+import { loadUser } from '../../actions/userActions'
 
 const NewPassword = () => {
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
 
     let navigate = useNavigate();
+    const dispatch = useDispatch()
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
 
     let { token } = useParams();
-    console.log(token)
 
     const resetPassword = async (token, passwords) => {
-        console.log(passwords)
         try {
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-            const { data } = await axios.put(`http://localhost:4001/api/v1/password/reset/${token}`, passwords, config)
-            
+            const { data } = await api.put(`${import.meta.env.VITE_API}/password/reset/${token}`, passwords)
+            storeAuthToken(data.token)
+            await dispatch(loadUser())
             setSuccess(data.success)
         } catch (error) {
-            console.log(error)
-            setError(error)
+            setError(error.response?.data?.message || error.message || 'Password reset failed.')
         }
     }
     useEffect(() => {
@@ -42,17 +38,14 @@ const NewPassword = () => {
             toast.success('password updated', {
                 position: 'bottom-right'
             });
-            navigate('/login')
+            navigate('/')
         }
 
-    }, [error, success,])
+    }, [error, navigate, success])
 
     const submitHandler = (e) => {
         e.preventDefault();
-        const formData = new FormData();
-        formData.set('password', password);
-        formData.set('confirmPassword', confirmPassword);
-        resetPassword(token, formData)
+        resetPassword(token, { password, confirmPassword })
     }
 
     return (

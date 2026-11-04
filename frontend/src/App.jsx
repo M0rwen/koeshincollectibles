@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { ToastContainer, } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useDispatch } from 'react-redux'
 import { loadUser } from './actions/userActions'
+import { LOGOUT_SUCCESS } from './constants/userConstants'
 
 
 
@@ -49,10 +50,30 @@ const ScrollToTop = () => {
   return null
 }
 
+const AuthSessionRedirect = () => {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      dispatch({ type: LOGOUT_SUCCESS })
+      navigate('/login', { replace: true })
+    }
+    window.addEventListener('koeshin:auth-expired', handleSessionExpired)
+    return () => window.removeEventListener('koeshin:auth-expired', handleSessionExpired)
+  }, [dispatch, navigate])
+
+  return null
+}
+
 const CatalogPage = () => {
   const { pathname } = useLocation()
   return <Home key={pathname} />
 }
+
+const AdminPage = ({ children }) => (
+  <main className="admin-page-shell">{children}</main>
+)
 
 function App() {
   const dispatch = useDispatch()
@@ -154,6 +175,7 @@ function App() {
 
 
       <Router>
+        <AuthSessionRedirect />
         <ScrollToTop />
         {/* <Header cartItems={state.cartItems} /> */}
         <Header
@@ -199,17 +221,17 @@ function App() {
           /> */}
           <Route
             path="/admin/order/:id"
-            element={<ProcessOrder />} />
+            element={<AdminPage><ProcessOrder /></AdminPage>} />
           <Route
             path="/admin/users"
-            element={<UsersList />} />
-          <Route path="/admin/user/:id" element={<UpdateUser />} />
+            element={<AdminPage><UsersList /></AdminPage>} />
+          <Route path="/admin/user/:id" element={<AdminPage><UpdateUser /></AdminPage>} />
 
           <Route
             path="/admin/products"
             element={
               <ProtectedRoute isAdmin={true}>
-                <ProductsList />
+                <AdminPage><ProductsList /></AdminPage>
               </ProtectedRoute>
             }
           />
@@ -218,7 +240,7 @@ function App() {
             path="/admin/product"
             element={
               <ProtectedRoute isAdmin={true}>
-                <NewProduct />
+                <AdminPage><NewProduct /></AdminPage>
               </ProtectedRoute>
             }
           />
@@ -227,14 +249,14 @@ function App() {
             path="/admin/product/:id"
 
             element={<ProtectedRoute isAdmin={true}>
-              <UpdateProduct />
+              <AdminPage><UpdateProduct /></AdminPage>
             </ProtectedRoute>} />
 
           <Route
             path="/admin/orders"
             element={
               <ProtectedRoute isAdmin={true}>
-                <OrdersList />
+                <AdminPage><OrdersList /></AdminPage>
               </ProtectedRoute>
             }
           />
@@ -243,7 +265,7 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute isAdmin={true}>
-                <Dashboard />
+                <AdminPage><Dashboard /></AdminPage>
               </ProtectedRoute>
             }
           />
@@ -251,13 +273,17 @@ function App() {
             path="/admin/reviews"
             element={
               <ProtectedRoute isAdmin={true} >
-                <ProductReviews />
+                <AdminPage><ProductReviews /></AdminPage>
               </ProtectedRoute>} />
         </Routes>
         <Footer />
       </Router>
 
-      <ToastContainer />
+      <ToastContainer
+        className="shop-toast-container"
+        position="bottom-right"
+        theme={theme}
+      />
     </>
   )
 }

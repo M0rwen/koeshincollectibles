@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import 'react-toastify/dist/ReactToastify.css';
 
 import MetaData from '../Layout/MetaData'
 import Loader from '../Layout/Loader'
@@ -109,7 +108,6 @@ const UsersList = () => {
             renderCell: (params) => (
 
                 <>
-                    {console.log(params)}
                     {showDeleted
                         ? <button className="btn btn-success py-1 px-2" onClick={() => restoreUser(params.id)}>Restore</button>
                         : <>

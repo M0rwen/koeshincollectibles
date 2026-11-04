@@ -1,6 +1,7 @@
 ﻿const Order = require('../models/order');
 const Product = require('../models/product');
 const mongoose = require('mongoose');
+const { randomUUID } = require('crypto')
 const sendEmail = require('../utils/sendEmail');
 const createOrderReceiptPdf = require('../utils/orderReceipt');
 const User = require('../models/user');
@@ -19,106 +20,132 @@ exports.newOrder = async (req, res, next) => {
     const {
         orderItems,
         shippingInfo,
-        paymentInfo,
         paymentMethod
     } = req.body;
+
+    if (!['Cash on Delivery', 'Demo payment'].includes(paymentMethod)) {
+        return res.status(400).json({ message: 'Please select a valid payment method' })
+    }
 
     if (!Array.isArray(orderItems) || orderItems.length === 0) {
         return res.status(400).json({ message: 'Please add at least one item to your order' })
     }
 
     const trustedOrderItems = []
-    for (const item of orderItems) {
-        const productId = item.product && typeof item.product === 'object'
-            ? item.product._id
-            : item.product
-        const quantity = Number(item.quantity)
-        if (!mongoose.Types.ObjectId.isValid(productId) || !Number.isInteger(quantity) || quantity < 1) {
-            return res.status(400).json({ message: 'One or more order items are invalid' })
-        }
+    const reservedStock = []
+    try {
+        for (const item of orderItems) {
+            const productId = item.product && typeof item.product === 'object'
+                ? item.product._id
+                : item.product
+            const quantity = Number(item.quantity)
+            if (!mongoose.Types.ObjectId.isValid(productId) || !Number.isInteger(quantity) || quantity < 1) {
+                await releaseReservedStock(reservedStock)
+                return res.status(400).json({ message: 'One or more order items are invalid' })
+            }
 
-        const product = await Product.findOne({ _id: productId, isDeleted: { $ne: true } })
-        if (!product) {
-            return res.status(400).json({ message: 'One or more products in your order are no longer available' })
-        }
-        if (quantity > product.stock) {
-            return res.status(400).json({ message: `${product.name} does not have enough stock` })
-        }
+            const product = await Product.findOneAndUpdate(
+                { _id: productId, isDeleted: { $ne: true }, stock: { $gte: quantity } },
+                { $inc: { stock: -quantity } },
+                { new: true, runValidators: true }
+            )
+            if (!product) {
+                await releaseReservedStock(reservedStock)
+                const availableProduct = await Product.findOne({ _id: productId, isDeleted: { $ne: true } })
+                if (availableProduct) {
+                    return res.status(400).json({ message: `${availableProduct.name} does not have enough stock` })
+                }
+                return res.status(400).json({ message: 'One or more products in your order are no longer available' })
+            }
+            reservedStock.push({ product: product._id, quantity })
 
-        trustedOrderItems.push({
-            name: product.name,
-            quantity,
-            image: product.images?.[0]?.url || item.image,
-            price: product.price,
-            product: product._id
-        })
+            trustedOrderItems.push({
+                name: product.name,
+                quantity,
+                image: product.images?.[0]?.url || item.image,
+                price: product.price,
+                product: product._id
+            })
+        }
+    } catch (error) {
+        await releaseReservedStock(reservedStock)
+        return next(error)
     }
 
     const totals = calculateOrderTotals(trustedOrderItems)
+    const isDemoPayment = paymentMethod === 'Demo payment'
+    const paymentReference = isDemoPayment ? `DEMO-${randomUUID().toUpperCase()}` : undefined
     const order = new Order({
         orderItems: trustedOrderItems,
         shippingInfo,
         ...totals,
-        paymentInfo,
+        paymentInfo: isDemoPayment
+            ? { status: 'succeeded', reference: paymentReference }
+            : { status: 'pending' },
         paymentMethod,
-        paidAt: !['Cash on Delivery', 'Card (demo only)'].includes(paymentMethod)
-            && paymentInfo?.status === 'succeeded' ? Date.now() : undefined,
+        paidAt: isDemoPayment ? Date.now() : undefined,
+        stockDeducted: true,
         user: req.user._id
     })
     order.orderReference = `KC-${order._id.toString().toUpperCase()}`
-    await order.save()
+    try {
+        await order.save()
+    } catch (error) {
+        await releaseReservedStock(reservedStock)
+        return next(error)
+    }
 
     const customer = { name: req.user.name, email: req.user.email }
-    const paymentNote = paymentMethod === 'Cash on Delivery'
-        ? 'Payment is pending and due on delivery.'
-        : 'Payment is pending; this demo order did not process a card payment.'
-    const emailItems = order.orderItems.map(item => (
-        `${escapeHtml(item.name)} (Qty ${item.quantity}) — PHP ${Number(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
-    )).join('<br>')
-    let receipt
-
-    try {
-        receipt = await createOrderReceiptPdf({
-            ...order.toObject(),
-            customer
-        })
-    } catch (receiptError) {
-        console.error('Order receipt PDF generation failed:', receiptError)
-    }
-
-    try {
-        await sendEmail({
-            email: req.user.email,
-            subject: `Koeshin's Collectibles — Order ${order.orderReference} confirmed`,
-            message: `
-                <strong>Order confirmed</strong><br>
-                Hi ${escapeHtml(req.user.name)},<br><br>
-                Thank you for your order ${escapeHtml(order.orderReference)}.<br><br>
-                ${emailItems}<br><br>
-                Subtotal: PHP ${Number(order.itemsPrice).toFixed(2)}<br>
-                Shipping: PHP ${Number(order.shippingPrice).toFixed(2)}<br>
-                Tax: PHP ${Number(order.taxPrice).toFixed(2)}<br>
-                Total: PHP ${Number(order.totalPrice).toFixed(2)}<br>
-                Payment status: Pending.<br>
-                ${paymentNote}<br><br>
-                You can view your order in your Koeshin's Collectibles account.
-            `,
-            attachments: receipt ? [{
-                filename: receipt.filename,
-                content: receipt.buffer,
-                contentType: 'application/pdf'
-            }] : undefined
-        })
-    } catch (emailError) {
-        console.error('Order confirmation email failed:', emailError)
-    }
-
     res.status(200).json({
         success: true,
         order: {
             ...order.toObject(),
-            customer,
-            receiptPdf: receipt?.buffer.toString('base64')
+            customer
+        }
+    })
+
+    setImmediate(async () => {
+        try {
+            const paymentNote = paymentMethod === 'Cash on Delivery'
+                ? 'Pay on delivery.'
+                : 'Paid (demo payment). Demo payment, no real charge.'
+            const paymentDate = order.paidAt
+                ? new Date(order.paidAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
+                : null
+            const emailItems = order.orderItems.map(item => (
+                `${escapeHtml(item.name)} (Qty ${item.quantity}) — PHP ${Number(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+            )).join('<br>')
+            const receipt = await createOrderReceiptPdf({
+                ...order.toObject(),
+                customer
+            })
+
+            await sendEmail({
+                email: customer.email,
+                subject: `Koeshin's Collectibles — Order ${order.orderReference} confirmed`,
+                message: `
+                    <strong>Order confirmed</strong><br>
+                    Hi ${escapeHtml(customer.name)},<br><br>
+                    Thank you for your order ${escapeHtml(order.orderReference)}.<br><br>
+                    ${emailItems}<br><br>
+                    Subtotal: PHP ${Number(order.itemsPrice).toFixed(2)}<br>
+                    Shipping: PHP ${Number(order.shippingPrice).toFixed(2)}<br>
+                    Tax: PHP ${Number(order.taxPrice).toFixed(2)}<br>
+                    Total: PHP ${Number(order.totalPrice).toFixed(2)}<br>
+                    Payment status: ${isDemoPayment ? 'Paid (demo payment)' : 'Pending'}.<br>
+                    ${paymentDate ? `Paid date: ${escapeHtml(paymentDate)}<br>` : ''}
+                    ${isDemoPayment ? `Payment reference: ${escapeHtml(paymentReference)}<br>` : ''}
+                    ${paymentNote}<br><br>
+                    You can view your order in your Koeshin's Collectibles account.
+                `,
+                attachments: [{
+                    filename: receipt.filename,
+                    content: receipt.buffer,
+                    contentType: 'application/pdf'
+                }]
+            })
+        } catch (emailError) {
+            console.error('Order confirmation email failed:', emailError)
         }
     })
 }
@@ -141,6 +168,10 @@ exports.getSingleOrder = async (req, res, next) => {
             message: 'No Order found with this ID',
 
         })
+    }
+    const ownerId = order.user?._id || order.user
+    if (req.user.role !== 'admin' && ownerId?.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, message: 'You are not authorized to view this order' })
     }
     res.status(200).json({
         success: true,
@@ -216,8 +247,37 @@ exports.updateOrder = async (req, res, next) => {
         })
     }
 
+    const deliveryReservations = []
     if (nextStatus === 'Delivered') {
-        await Promise.all(order.orderItems.map(item => updateStock(item.product, item.quantity)))
+        if (order.stockDeducted !== true) {
+            try {
+                for (const item of order.orderItems) {
+                    const product = await Product.findOneAndUpdate(
+                        { _id: item.product, isDeleted: { $ne: true }, stock: { $gte: item.quantity } },
+                        { $inc: { stock: -item.quantity } },
+                        { new: true, runValidators: true }
+                    )
+                    if (!product) {
+                        await releaseReservedStock(deliveryReservations)
+                        const availableProduct = await Product.findOne({
+                            _id: item.product,
+                            isDeleted: { $ne: true }
+                        })
+                        return res.status(400).json({
+                            success: false,
+                            message: availableProduct
+                                ? `${item.name} does not have enough stock to complete this legacy order`
+                                : `${item.name} is no longer available to complete this legacy order`
+                        })
+                    }
+                    deliveryReservations.push({ product: product._id, quantity: item.quantity })
+                }
+            } catch (error) {
+                await releaseReservedStock(deliveryReservations)
+                return next(error)
+            }
+            order.stockDeducted = true
+        }
         order.deliveredAt = Date.now()
         if (order.paymentMethod === 'Cash on Delivery') {
             order.paymentInfo = {
@@ -229,15 +289,29 @@ exports.updateOrder = async (req, res, next) => {
     }
 
     order.orderStatus = nextStatus
-    await order.save()
-
-    // Generate the receipt after saving so email failures cannot undo the status update.
     try {
-        const customer = await User.findOne({
-            _id: order.user,
-            isDeleted: { $ne: true }
-        }).select('email name')
-        if (customer && customer.email) {
+        await order.save()
+    } catch (error) {
+        await releaseReservedStock(deliveryReservations)
+        return next(error)
+    }
+
+    res.status(200).json({
+        success: true,
+        notificationQueued: true
+    })
+
+    setImmediate(async () => {
+        try {
+            const customer = await User.findOne({
+                _id: order.user,
+                isDeleted: { $ne: true }
+            }).select('email name')
+            if (!customer?.email) {
+                console.error('Order status email failed: customer email address is unavailable.')
+                return
+            }
+
             const totals = calculateOrderTotals(order.orderItems)
             const itemsHtml = order.orderItems.map(item =>
                 `<tr>
@@ -249,26 +323,19 @@ exports.updateOrder = async (req, res, next) => {
 
             const statusColor = nextStatus === 'Delivered' ? '#22863a' : nextStatus === 'Shipped' ? '#0366d6' : '#6f42c1'
             const receiptPayment = order.paymentMethod === 'Cash on Delivery'
-                ? (nextStatus === 'Delivered' ? 'Payment received on delivery.' : 'Payment is due on delivery.')
-                : 'No payment was processed for this demo-card order.'
-            let receipt
+                ? (order.paymentInfo?.status === 'succeeded' ? 'Paid on delivery.' : 'Pay on delivery.')
+                : 'Paid (demo payment). Demo payment, no real charge.'
+            const receipt = await createOrderReceiptPdf({
+                ...order.toObject(),
+                customer: { name: customer.name, email: customer.email }
+            })
 
-            try {
-                receipt = await createOrderReceiptPdf({
-                    ...order.toObject(),
-                    customer: { name: customer.name, email: customer.email }
-                })
-            } catch (receiptError) {
-                console.error('Order status receipt PDF generation failed:', receiptError)
-            }
-
-            try {
-                await sendEmail({
-                    email: customer.email,
-                    subject: nextStatus === 'Delivered'
-                        ? `Koeshin's Collectibles — Order ${order.orderReference || order._id} delivered`
-                        : `Koeshin's Collectibles — Order ${order.orderReference || order._id} is now ${nextStatus}`,
-                    message: `
+            await sendEmail({
+                email: customer.email,
+                subject: nextStatus === 'Delivered'
+                    ? `Koeshin's Collectibles — Order ${order.orderReference || order._id} delivered`
+                    : `Koeshin's Collectibles — Order ${order.orderReference || order._id} is now ${nextStatus}`,
+                message: `
                         <div style="font-family:sans-serif;max-width:600px;margin:auto">
                             <h2 style="margin-bottom:4px">${nextStatus === 'Delivered' ? 'Your order has been delivered' : 'Order status update'}</h2>
                             <p>Hi ${escapeHtml(customer.name)},</p>
@@ -292,38 +359,36 @@ exports.updateOrder = async (req, res, next) => {
                                 Tax: PHP ${totals.taxPrice.toFixed(2)}<br>
                                 <strong>Total: PHP ${totals.totalPrice.toFixed(2)}</strong>
                             </p>
-                            <p>${receiptPayment}</p>
-                            <p style="color:#666;font-size:0.9em">${receipt
-                                ? 'Your PDF receipt is attached for safekeeping.'
-                                : 'Your order details are available in your order history.'}</p>
+                            <p>Payment: ${escapeHtml(receiptPayment)}</p>
+                            ${order.paidAt ? `<p>Paid date: ${escapeHtml(new Date(order.paidAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }))}</p>` : ''}
+                            ${order.paymentInfo?.reference ? `<p>Payment reference: ${escapeHtml(order.paymentInfo.reference)}</p>` : ''}
+                            <p style="color:#666;font-size:0.9em">Your PDF receipt is attached for safekeeping.</p>
                             <p>Thank you for shopping at Koeshin's Collectibles. Good things keep finding us.</p>
                         </div>
                     `,
-                    attachments: receipt ? [{
-                        filename: receipt.filename,
-                        content: receipt.buffer,
-                        contentType: 'application/pdf'
-                    }] : undefined
-                })
-            } catch (emailError) {
-                console.error('Order status email failed:', emailError)
-            }
+                attachments: [{
+                    filename: receipt.filename,
+                    content: receipt.buffer,
+                    contentType: 'application/pdf'
+                }]
+            })
+        } catch (statusEmailError) {
+            console.error('Order status email failed:', statusEmailError)
         }
-    } catch (statusEmailError) {
-        console.error('Order status email preparation failed:', statusEmailError)
-    }
-
-    res.status(200).json({
-        success: true,
     })
 }
 
-async function updateStock(id, quantity) {
-    const product = await Product.findOne({ _id: id, isDeleted: { $ne: true } });
-    if (!product) return
-    product.stock = product.stock - quantity;
-
-    await product.save({ validateBeforeSave: false })
+async function releaseReservedStock(reservedStock) {
+    for (const reservation of reservedStock.reverse()) {
+        try {
+            await Product.updateOne(
+                { _id: reservation.product },
+                { $inc: { stock: reservation.quantity } }
+            )
+        } catch (error) {
+            console.error(`Failed to restore reserved stock for product ${reservation.product}:`, error)
+        }
+    }
 }
 
 exports.totalOrders = async (req, res, next) => {
@@ -419,7 +484,6 @@ exports.customerSales = async (req, res, next) => {
         { $sort: { total: -1 } },
 
     ])
-    console.log(customerSales)
     if (!customerSales) {
         return res.status(404).json({
             message: 'error customer sales',

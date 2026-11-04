@@ -3,6 +3,7 @@ import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../../actions/userActions'
 import Search from './Search'
+import ProfileAvatar from '../User/ProfileAvatar'
 
 const Header = ({ theme, onToggleTheme }) => {
     const dispatch = useDispatch()
@@ -11,8 +12,9 @@ const Header = ({ theme, onToggleTheme }) => {
     const { cartItems } = useSelector(state => state.cart)
 
     const logoutHandler = async () => {
-        const loggedOut = await dispatch(logout())
+        const logoutRequest = dispatch(logout())
         navigate('/login', { replace: true })
+        const loggedOut = await logoutRequest
         if (loggedOut) {
             toast.success('Logged out', { position: 'bottom-right' })
         } else {
@@ -36,7 +38,7 @@ const Header = ({ theme, onToggleTheme }) => {
                     {user ? (
                         <>
                             <Link className="site-account" to="/me" aria-label={`Account for ${user.name}`}>
-                                <span className="account-mark">{user.name?.charAt(0)?.toUpperCase() || 'K'}</span>
+                                <ProfileAvatar user={user} className="account-mark" />
                                 <span className="account-label">{user.name?.split(' ')[0] || 'Account'}</span>
                             </Link>
                             {user.role !== 'admin' && (

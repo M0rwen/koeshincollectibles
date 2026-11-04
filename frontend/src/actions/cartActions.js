@@ -1,5 +1,5 @@
 import api from '../Utils/api'
-import { ADD_TO_CART, REMOVE_ITEM_CART, SAVE_SHIPPING_INFO, CLEAR_CART } from '../constants/cartConstants'
+import { ADD_TO_CART, REMOVE_ITEM_CART, REMOVE_ITEMS_CART, SAVE_SHIPPING_INFO, CLEAR_CART } from '../constants/cartConstants'
 import { errMsg } from '../Utils/helpers'
 
 export const addItemToCart = (id, quantity) => async (dispatch, getState) => {
@@ -48,6 +48,14 @@ export const removeItemFromCart = (id) => async (dispatch, getState) => {
     localStorage.setItem('cartItems', JSON.stringify(getState().cart.cartItems))
 }
 
+export const removeItemsFromCart = (ids) => async (dispatch, getState) => {
+    dispatch({
+        type: REMOVE_ITEMS_CART,
+        payload: ids
+    })
+    localStorage.setItem('cartItems', JSON.stringify(getState().cart.cartItems))
+}
+
 export const saveShippingInfo = (data) => async (dispatch) => {
     dispatch({
         type: SAVE_SHIPPING_INFO,
@@ -60,4 +68,5 @@ export const clearCart = () => async (dispatch) => {
     dispatch({
         type: CLEAR_CART,
     })
+    localStorage.setItem('cartItems', JSON.stringify([]))
 }

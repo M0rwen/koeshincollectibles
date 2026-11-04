@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import MetaData from './Layout/MetaData'
 import Product from './Product/Product'
 import Loader from './Layout/Loader'
@@ -31,19 +31,28 @@ const ProductShelf = ({ eyebrow, title, products, link, linkLabel }) => (
 )
 
 const Home = () => {
-    const { keyword, category: categoryParam } = useParams()
-    const { pathname } = useLocation()
-    const { loading, products, error, productsCount, filteredProductsCount } = useSelector(state => state.products)
-    const [price, setPrice] = useState(['', ''])
-    const [category, setCategory] = useState(() => (
-        PRODUCT_CATEGORIES.includes(categoryParam) ? categoryParam : ''
-    ))
-    const [rating, setRating] = useState('')
+    const { keyword: routeKeyword, category: categoryParam } = useParams()
+    const { pathname, search } = useLocation()
+    const navigate = useNavigate()
+    const searchParams = useMemo(() => new URLSearchParams(search), [search])
+    const keyword = searchParams.get('keyword') || routeKeyword || ''
+    const { loading, products, error, productsCount, filteredProductsCount, resPerPage } = useSelector(state => state.products)
+    const price = useMemo(() => [
+        searchParams.get('price[gte]') || '',
+        searchParams.get('price[lte]') || ''
+    ], [searchParams])
+    const category = searchParams.has('category')
+        ? searchParams.get('category')
+        : (PRODUCT_CATEGORIES.includes(categoryParam) ? categoryParam : '')
+    const rating = searchParams.get('ratings[gte]') || ''
+    const reviewCount = searchParams.get('numOfReviews[gte]') || ''
     const [currentPage, setCurrentPage] = useState(1)
     const [catalogRetry, setCatalogRetry] = useState(0)
     const dispatch = useDispatch()
     const sentinelRef = useRef(null)
+    const previousCatalogFilters = useRef(JSON.stringify([pathname, keyword, price, category, rating, reviewCount]))
     const count = filteredProductsCount ?? productsCount ?? 0
+    const pageCount = Math.max(1, Math.ceil(count / (resPerPage || 1)))
     const hasMore = products.length < count
     const minimumPrice = Number(price[0]) || 1
     const maximumPrice = Number(price[1]) || 3500
@@ -56,6 +65,9 @@ const Home = () => {
     const isShopPage = pathname === '/shop'
     const isCollectionsPage = pathname === '/collections'
     const isCategoryPage = pathname.startsWith('/collections/')
+    const isLegacySearchPage = pathname.startsWith('/search/')
+    const isSearching = Boolean(keyword)
+    const catalogFilterKey = JSON.stringify([pathname, keyword, price, category, rating, reviewCount])
     const productsByCategory = PRODUCT_CATEGORIES
         .map(name => ({
             name,
@@ -88,49 +100,19 @@ const Home = () => {
     const newestFind = newestProducts[0]
 
     useEffect(() => {
-        if (isCollectionsPage || priceRangeInvalid) return
-        if (isHomePage) {
-            let cancelled = false
-            const loadHomeCatalog = async () => {
-                let page = 1
-                let result
-                do {
-                    result = await dispatch(getProducts(page, keyword, price, category, rating))
-                    if (cancelled || !result) return
-                    page += 1
-                } while (result.resPerPage > 0 && page <= Math.ceil(result.filteredProductsCount / result.resPerPage))
-            }
-            void loadHomeCatalog()
-            return () => {
-                cancelled = true
-            }
+        const filtersChanged = previousCatalogFilters.current !== catalogFilterKey
+        previousCatalogFilters.current = catalogFilterKey
+        if (filtersChanged && currentPage !== 1) {
+            setCurrentPage(1)
+            return
         }
-        dispatch(getProducts(currentPage, keyword, price, category, rating))
-    }, [currentPage, keyword, price, category, rating, priceRangeInvalid, isCollectionsPage, isHomePage, catalogRetry, dispatch])
-
-    useEffect(() => {
-        if (!isCollectionsPage || priceRangeInvalid) return
-
-        let cancelled = false
-        const loadCatalog = async () => {
-            let page = 1
-            let result
-            do {
-                result = await dispatch(getProducts(page, keyword, price, category, rating))
-                if (cancelled || !result) return
-                page += 1
-            } while (result.resPerPage > 0 && page <= Math.ceil(result.filteredProductsCount / result.resPerPage))
-        }
-
-        void loadCatalog()
-        return () => {
-            cancelled = true
-        }
-    }, [catalogRetry, category, dispatch, isCollectionsPage, keyword, price, priceRangeInvalid, rating])
+        if (priceRangeInvalid) return
+        dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, !isHomePage && currentPage > 1))
+    }, [currentPage, keyword, price, category, rating, reviewCount, priceRangeInvalid, catalogRetry, dispatch, catalogFilterKey, isHomePage])
 
     useEffect(() => {
         const sentinel = sentinelRef.current
-        if (isCollectionsPage || isHomePage || !sentinel || loading || error || !hasMore) return
+        if (isHomePage || !sentinel || loading || error || !hasMore) return
 
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting) {
@@ -140,17 +122,43 @@ const Home = () => {
 
         observer.observe(sentinel)
         return () => observer.disconnect()
-    }, [error, hasMore, isCollectionsPage, isHomePage, loading])
+    }, [error, hasMore, isHomePage, loading])
 
-    const updateCategory = (value) => {
-        setCategory(value)
+    const updateCatalogUrl = (updates, { replace = false } = {}) => {
+        const params = new URLSearchParams(search)
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null) params.delete(key)
+            else params.set(key, String(value))
+        })
+        const query = params.toString()
+        navigate({ pathname, search: query ? `?${query}` : '' }, { replace })
+    }
+
+    const updateCategory = value => {
+        updateCatalogUrl({ category: value })
         setCurrentPage(1)
     }
 
     const clearFilters = () => {
-        setPrice(['', ''])
-        setCategory('')
-        setRating('')
+        updateCatalogUrl({
+            'price[gte]': null,
+            'price[lte]': null,
+            category: isCategoryPage ? '' : null,
+            'ratings[gte]': null,
+            'numOfReviews[gte]': null
+        })
+        setCurrentPage(1)
+    }
+
+    const clearSearch = () => {
+        if (isLegacySearchPage) {
+            const params = new URLSearchParams(search)
+            params.delete('keyword')
+            const query = params.toString()
+            navigate({ pathname: '/shop', search: query ? `?${query}` : '' })
+        } else {
+            updateCatalogUrl({ keyword: null })
+        }
         setCurrentPage(1)
     }
 
@@ -159,10 +167,10 @@ const Home = () => {
             setCatalogRetry(retry => retry + 1)
             return
         }
-        dispatch(getProducts(currentPage, keyword, price, category, rating))
+        dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, !isHomePage && currentPage > 1))
     }
 
-    const hasFilters = Boolean(keyword || category || rating || price[0] || price[1])
+    const hasFilters = Boolean(keyword || category || rating || reviewCount || price[0] || price[1])
 
     if (isHomePage) {
         return (
@@ -184,6 +192,7 @@ const Home = () => {
                             <Link className="landing-cta" to={newestFind ? `/product/${newestFind._id}` : '/shop'}>
                                 {newestFind ? 'Meet the newest find' : 'Explore the shop'} <span aria-hidden="true">→</span>
                             </Link>
+                            <Link className="landing-text-link landing-shop-all" to="/shop">Shop all products <span aria-hidden="true">→</span></Link>
                         </div>
                         <div className="landing-drop-display">
                             <span className="landing-display-note">FOUND WITH<br />A LITTLE MAGIC</span>
@@ -255,6 +264,63 @@ const Home = () => {
                         </div>
                     </section>
 
+                    <section className="landing-page-products" aria-labelledby="landing-products-title">
+                        <div className="landing-section-heading">
+                            <div>
+                                <p className="store-kicker">THE WHOLE CABINET</p>
+                                <h2 id="landing-products-title">Shop every find</h2>
+                            </div>
+                            <span className="landing-aside-note">{count} {count === 1 ? 'product' : 'products'}</span>
+                        </div>
+                        {loading && products.length === 0 ? <Loader /> : products.length > 0 ? (
+                            <>
+                                <div className="product-grid">
+                                    {products.map(product => <Product key={product._id} product={product} />)}
+                                </div>
+                                {error && <p className="landing-load-note" role="alert">{error}</p>}
+                                {pageCount > 1 && (
+                                    <nav className="landing-pagination" aria-label="Product pages">
+                                        <button
+                                            type="button"
+                                            className="store-button"
+                                            onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+                                            disabled={currentPage <= 1 || loading}
+                                        >
+                                            Previous
+                                        </button>
+                                        <div className="landing-page-numbers">
+                                            {Array.from({ length: pageCount }, (_, index) => index + 1).map(page => (
+                                                <button
+                                                    type="button"
+                                                    key={page}
+                                                    className={`store-button${currentPage === page ? ' is-current' : ''}`}
+                                                    aria-current={currentPage === page ? 'page' : undefined}
+                                                    onClick={() => setCurrentPage(page)}
+                                                    disabled={loading}
+                                                >
+                                                    {page}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="store-button"
+                                            onClick={() => setCurrentPage(page => Math.min(pageCount, page + 1))}
+                                            disabled={currentPage >= pageCount || loading}
+                                        >
+                                            Next
+                                        </button>
+                                    </nav>
+                                )}
+                            </>
+                        ) : (
+                            <div className="shop-empty">
+                                <h3>{error ? "We couldn't open the cabinet." : 'No products found'}</h3>
+                                {error && <button className="store-button store-button-dark" type="button" onClick={retryProducts}>Try again</button>}
+                            </div>
+                        )}
+                    </section>
+
                     {error && products.length > 0 && (
                         <p className="landing-load-note" role="status">Some finds couldn’t be loaded. <button type="button" onClick={retryProducts}>Try again</button></p>
                     )}
@@ -272,7 +338,7 @@ const Home = () => {
     return (
         <>
             <MetaData title={isCollectionsPage ? 'Collections' : category || (isShopPage ? 'Shop all products' : 'Curious finds, carefully kept')} />
-            <main className="store-home">
+            <main className={`store-home${isCollectionsPage ? ' collections-page' : ''}`}>
                 {(isCollectionsPage || isCategoryPage) && <section className="collection-shortcuts" id="collections" aria-labelledby="collections-title">
                     <div className="section-heading collection-heading">
                         <div>
@@ -305,17 +371,22 @@ const Home = () => {
                     </nav>
                 </section>}
 
-                <section className="shop-section" id="shop" aria-labelledby="shop-title">
-                    <div className="shop-title-row">
+                <section
+                    className="shop-section"
+                    id="shop"
+                    aria-labelledby={isCollectionsPage && !isSearching ? undefined : 'shop-title'}
+                    aria-label={isCollectionsPage && !isSearching ? 'Collection shelves' : undefined}
+                >
+                    {(!isCollectionsPage || isSearching) && <div className="shop-title-row">
                         <div>
                             <p className="store-kicker">THE GOOD STUFF</p>
-                            <h2 id="shop-title">{keyword ? `Finds for "${keyword}"` : isCollectionsPage ? 'All collections' : category || (isShopPage ? 'Shop all products' : isCategoryPage ? categoryParam : 'Shop the collection')}</h2>
+                            <h2 id="shop-title">{isSearching ? `Results for '${keyword}'` : category || (isShopPage ? 'Shop all products' : isCategoryPage ? categoryParam : 'Shop the collection')}</h2>
                         </div>
                         <div className="shop-count-wrap">
                             <p className="shop-count">{count} {count === 1 ? 'find' : 'finds'} in the cabinet</p>
                             <p className="catalog-preview-note">Preview listings; verify price, condition, and stock before sale.</p>
                         </div>
-                    </div>
+                    </div>}
 
                     <div className="shop-layout">
                         <aside className="shop-filters" aria-label="Filter products">
@@ -338,7 +409,10 @@ const Home = () => {
                                         getAriaLabel={() => 'Price range'}
                                         value={sliderValue}
                                         onChange={(_, value) => {
-                                            setPrice(value.map(String))
+                                            updateCatalogUrl({
+                                                'price[gte]': value[0] === 1 ? null : value[0],
+                                                'price[lte]': value[1] === sliderMaximum ? null : value[1]
+                                            }, { replace: true })
                                             setCurrentPage(1)
                                         }}
                                         valueLabelDisplay="auto"
@@ -360,7 +434,7 @@ const Home = () => {
                                             placeholder="No minimum"
                                             value={price[0]}
                                             onChange={event => {
-                                                setPrice([event.target.value, price[1]])
+                                                updateCatalogUrl({ 'price[gte]': event.target.value || null }, { replace: true })
                                                 setCurrentPage(1)
                                             }}
                                         />
@@ -376,7 +450,7 @@ const Home = () => {
                                             placeholder="No limit"
                                             value={price[1]}
                                             onChange={event => {
-                                                setPrice([price[0], event.target.value])
+                                                updateCatalogUrl({ 'price[lte]': event.target.value || null }, { replace: true })
                                                 setCurrentPage(1)
                                             }}
                                         />
@@ -387,20 +461,39 @@ const Home = () => {
                             <div className="filter-group">
                                 <label htmlFor="rating-filter">Minimum rating</label>
                                 <select id="rating-filter" value={rating} onChange={(event) => {
-                                    setRating(event.target.value)
+                                    updateCatalogUrl({ 'ratings[gte]': event.target.value || null })
                                     setCurrentPage(1)
                                 }}>
                                     <option value="">Any rating</option>
                                     {[4, 3, 2, 1].map(value => <option key={value} value={value}>{value} stars &amp; up</option>)}
                                 </select>
                             </div>
+                            <div className="filter-group">
+                                <label htmlFor="review-count-filter">Number of reviews</label>
+                                <select
+                                    id="review-count-filter"
+                                    value={reviewCount}
+                                    onChange={event => {
+                                        updateCatalogUrl({ 'numOfReviews[gte]': event.target.value || null })
+                                        setCurrentPage(1)
+                                    }}
+                                >
+                                    <option value="">Any reviews</option>
+                                    <option value="1">1+ reviews</option>
+                                    <option value="5">5+ reviews</option>
+                                    <option value="10">10+ reviews</option>
+                                </select>
+                            </div>
                             <p className="filter-footnote">Collected curios, pocket-sized classics, and well-loved oddities.</p>
                         </aside>
 
-                        <div className="shop-results">
+                        <div className="shop-results" aria-busy={loading}>
+                            {loading && currentPage === 1 && products.length > 0 && (
+                                <p className="catalog-updating" role="status">Updating products…</p>
+                            )}
                             {loading && currentPage === 1 && products.length === 0 ? <Loader /> : error && currentPage === 1 && products.length === 0 ? (
                                 <div className="shop-empty"><h3>We couldn't open the cabinet.</h3><p>{error}</p><button className="store-button store-button-dark" type="button" onClick={retryProducts}>Try again</button></div>
-                            ) : products.length > 0 && isCollectionsPage ? (
+                            ) : products.length > 0 && isCollectionsPage && !isSearching ? (
                                 <div className="collection-products">
                                     {productsByCategory.map(collection => (
                                         <section className="collection-product-section" key={collection.name}>
@@ -423,25 +516,21 @@ const Home = () => {
                             ) : (
                                 <div className="shop-empty">
                                     <span className="empty-mark" aria-hidden="true">*</span>
-                                    <h3>No products found</h3>
-                                    <p>Try another collection or loosen the filters to see more finds.</p>
-                                    <button className="store-button store-button-dark" type="button" onClick={clearFilters}>Show everything</button>
-                                </div>
-                            )}
-                            {error && products.length > 0 && isCollectionsPage && (
-                                <div className="infinite-error" role="alert">
-                                    <span>Some products couldn't load: {error}</span>
-                                    <button type="button" onClick={retryProducts}>Retry</button>
+                                    <h3>{isSearching ? `No products match '${keyword}'` : 'No products found'}</h3>
+                                    <p>{isSearching ? 'Try another search or clear it to see the rest of the collection.' : 'Try another collection or loosen the filters to see more finds.'}</p>
+                                    <button className="store-button store-button-dark" type="button" onClick={isSearching ? clearSearch : clearFilters}>
+                                        {isSearching ? 'Clear search' : 'Show everything'}
+                                    </button>
                                 </div>
                             )}
                             {error && currentPage > 1 && (
                                 <div className="infinite-error" role="alert">
                                     <span>More finds couldn't load.</span>
-                                    <button type="button" onClick={() => dispatch(getProducts(currentPage, keyword, price, category, rating))}>Retry</button>
+                                    <button type="button" onClick={() => dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, !isHomePage && currentPage > 1))}>Retry</button>
                                 </div>
                             )}
                             {loading && currentPage > 1 && <div className="infinite-loading" role="status"><span className="loading-mark" />Loading more finds...</div>}
-                            {!isCollectionsPage && !loading && !error && hasMore && <div ref={sentinelRef} className="infinite-sentinel" aria-hidden="true" />}
+                            {!isHomePage && !loading && !error && hasMore && <div ref={sentinelRef} className="infinite-sentinel" aria-hidden="true" />}
                             {!loading && !hasMore && products.length > 0 && <p className="collection-end">You've reached the end of this collection.</p>}
                         </div>
                     </div>

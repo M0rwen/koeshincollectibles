@@ -1,13 +1,10 @@
-import React, { useState, useEffect } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import Loader from '../Layout/Loader'
 import MetaData from '../Layout/MetaData'
 
-import axios from 'axios';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 // import { getToken } from '../../Utils/helpers';
 import { useSelector } from 'react-redux'
+import ProfileAvatar from './ProfileAvatar'
 const Profile = () => {
     const { user, loading } = useSelector(state => state.auth)
     // const [loading, setLoading] = useState(true)
@@ -51,7 +48,7 @@ const Profile = () => {
                     {user && <div className="row justify-content-around mt-5 user-info">
                         <div className="col-12 col-md-3">
                             <figure className='avatar avatar-profile'>
-                                <img className="rounded-circle img-fluid" src={user.avatar ? user.avatar.url : null} alt={user.name} />
+                                <ProfileAvatar user={user} className="img-fluid" />
                             </figure>
                             <Link to="/me/update" id="edit_profile" className="btn btn-primary btn-block my-5">
                                 Edit Profile
@@ -75,7 +72,7 @@ const Profile = () => {
                             <p>{String(user.createdAt).substring(0, 10)}</p>
 
                             {user.role !== 'admin' && (
-                                <Link to="/orders/me" className="btn btn-danger btn-block mt-5">
+                                <Link to="/orders/me" className="btn btn-primary btn-block mt-5">
                                     My Orders
                                 </Link>
                             )}

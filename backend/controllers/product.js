@@ -1,9 +1,9 @@
 const Product = require('../models/product')
 const Order = require('../models/order')
+const mongoose = require('mongoose')
 const cloudinary = require('cloudinary')
 const fs = require('fs/promises')
 const path = require('path')
-const { randomUUID } = require('crypto')
 const APIFeatures = require('../utils/apiFeatures');
 const Filter = require('bad-words');
 const badWordsFilter = new Filter();
@@ -11,6 +11,53 @@ const badWordsFilter = new Filter();
 const productImageDirectory = path.resolve(__dirname, '../../frontend/public/images/products')
 const maxImageBytes = 10 * 1024 * 1024
 const maxTotalImageBytes = 35 * 1024 * 1024
+const allowedCategories = [
+    'Marvel Figurines',
+    'Magic: The Gathering Cards',
+    'Gundam',
+    'Marvel Comics',
+    'Hot Wheels'
+]
+
+const validateProductInput = (body, { creating = false } = {}) => {
+    const requiredFields = ['name', 'description', 'price', 'stock', 'category']
+    const isNumericInput = value => (
+        typeof value === 'number'
+        || (typeof value === 'string' && value.trim() !== '')
+    )
+    if (creating) {
+        for (const field of requiredFields) {
+            if (body[field] === undefined || body[field] === null || String(body[field]).trim() === '') {
+                return `Product ${field} is required`
+            }
+        }
+    }
+
+    if (Object.hasOwn(body, 'name') && (typeof body.name !== 'string' || !body.name.trim())) {
+        return 'Product name is required'
+    }
+    if (Object.hasOwn(body, 'description') && (typeof body.description !== 'string' || !body.description.trim())) {
+        return 'Product description is required'
+    }
+    if (Object.hasOwn(body, 'price')) {
+        if (!isNumericInput(body.price)) return 'Product price must be greater than zero'
+        const price = Number(body.price)
+        if (!Number.isFinite(price) || price <= 0) return 'Product price must be greater than zero'
+    }
+    if (Object.hasOwn(body, 'stock')) {
+        if (!isNumericInput(body.stock)) return 'Product stock must be a whole number of 0 or more'
+        const stock = Number(body.stock)
+        if (!Number.isInteger(stock) || stock < 0) return 'Product stock must be a whole number of 0 or more'
+    }
+    if (Object.hasOwn(body, 'category') && !allowedCategories.includes(body.category)) {
+        return 'Choose one of the five available product categories'
+    }
+    if (creating && getImageInputs(body.images).length === 0) {
+        return 'At least one product image is required'
+    }
+
+    return null
+}
 
 const getImageInputs = (images) => {
     if (typeof images === 'string') return [images]
@@ -37,13 +84,13 @@ const saveProductImages = async (images) => {
                 throw new Error('Combined product images must be smaller than 35 MB')
             }
 
-            const extension = match[1].toLowerCase() === 'jpeg' ? 'jpg' : match[1].toLowerCase()
-            const filename = `${randomUUID()}.${extension}`
-            await fs.mkdir(productImageDirectory, { recursive: true })
-            await fs.writeFile(path.join(productImageDirectory, filename), buffer, { flag: 'wx' })
+            const uploadedImage = await cloudinary.v2.uploader.upload(image, {
+                folder: 'products',
+                resource_type: 'image'
+            })
             savedImages.push({
-                public_id: `repo:${filename}`,
-                url: `/images/products/${filename}`
+                public_id: uploadedImage.public_id,
+                url: uploadedImage.secure_url || uploadedImage.url
             })
         }
     } catch (error) {
@@ -70,6 +117,9 @@ const destroyProductImages = async (images = []) => {
 }
 
 exports.newProduct = async (req, res, next) => {
+    const validationError = validateProductInput(req.body, { creating: true })
+    if (validationError) return res.status(400).json({ success: false, message: validationError })
+
     const imageInputs = getImageInputs(req.body.images)
     if (imageInputs.length === 0 || imageInputs.length > 10) {
         return res.status(400).json({ message: 'Please provide between 1 and 10 product images' })
@@ -183,6 +233,8 @@ exports.updateProduct = async (req, res, next) => {
             message: 'Product not found'
         })
     }
+    const validationError = validateProductInput(req.body)
+    if (validationError) return res.status(400).json({ success: false, message: validationError })
     const imageInputs = getImageInputs(req.body.images)
     if (imageInputs.length > 10) {
         return res.status(400).json({ message: 'A product can have at most 10 images' })
@@ -257,6 +309,23 @@ exports.restoreProduct = async (req, res) => {
 
 exports.createProductReview = async (req, res, next) => {
     const { rating, comment, productId } = req.body;
+    const numericRating = Number(rating)
+    const normalizedComment = typeof comment === 'string' ? comment.trim() : ''
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        return res.status(400).json({ success: false, message: 'A valid product ID is required.' })
+    }
+    if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+        return res.status(400).json({ success: false, message: 'Rating must be a whole number from 1 to 5.' })
+    }
+    if (!normalizedComment || normalizedComment.length > 1000) {
+        return res.status(400).json({ success: false, message: 'Review text is required and must be 1000 characters or fewer.' })
+    }
+
+    const product = await Product.findOne({ _id: productId, isDeleted: { $ne: true } });
+    if (!product) {
+        return res.status(404).json({ success: false, message: 'Product not found' })
+    }
 
     // 6.1 — buyers only: the reviewer must have a Delivered order containing this product
     const purchasedOrder = await Order.findOne({
@@ -272,30 +341,20 @@ exports.createProductReview = async (req, res, next) => {
         })
     }
 
-    // 6.3 — bad word filter
-    if (comment && badWordsFilter.isProfane(comment)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Your review contains inappropriate language. Please revise your comment.'
-        })
-    }
+    const cleanedComment = badWordsFilter.clean(normalizedComment)
 
     const review = {
         user: req.user._id,
         name: req.user.name,
-        rating: Number(rating),
-        comment
-    }
-    const product = await Product.findOne({ _id: productId, isDeleted: { $ne: true } });
-    if (!product) {
-        return res.status(404).json({ success: false, message: 'Product not found' })
+        rating: numericRating,
+        comment: cleanedComment
     }
     const existingReview = product.reviews.find(
         review => review.user.toString() === req.user._id.toString()
     )
     if (existingReview) {
-        existingReview.comment = comment
-        existingReview.rating = Number(rating)
+        existingReview.comment = cleanedComment
+        existingReview.rating = numericRating
         existingReview.name = req.user.name
         existingReview.isDeleted = false
         existingReview.deletedAt = undefined
@@ -387,8 +446,6 @@ exports.productSales = async (req, res, next) => {
             },
         },
     ])
-    console.log(sales)
-
     if (!totalSales) {
         return res.status(404).json({
             message: 'error sales'
@@ -410,7 +467,6 @@ exports.productSales = async (req, res, next) => {
             percent
         }
     })
-    console.log(totalPercentage)
     res.status(200).json({
         success: true,
         totalPercentage,

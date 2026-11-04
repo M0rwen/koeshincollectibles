@@ -1,4 +1,5 @@
 import api from '../Utils/api'
+import { clearAuthToken, storeAuthToken } from '../Utils/authToken'
 import {
     LOGIN_REQUEST,
     LOGIN_SUCCESS,
@@ -38,27 +39,19 @@ import {
     CLEAR_ERRORS
 } from '../constants/userConstants'
 
-// export const register = (userData) => async (dispatch) => {
-//     try {
-//         dispatch({ type: REGISTER_USER_REQUEST })
-//         const config = {
-//             headers: {
-//                 'Content-Type': 'multipart/form-data'
-//             }
-//         }
-//         const { data } = await axios.post(`${import.meta.env.VITE_API}/register`, userData, config)
-
-//         dispatch({
-//             type: REGISTER_USER_SUCCESS,
-//             payload: data.user
-//         })
-//     } catch (error) {
-//         dispatch({
-//             type: REGISTER_USER_FAIL,
-//             payload: error.response.data.message
-//         })
-//     }
-// }
+export const register = userData => async dispatch => {
+    try {
+        dispatch({ type: REGISTER_USER_REQUEST })
+        const { data } = await api.post(`${import.meta.env.VITE_API}/register`, userData)
+        storeAuthToken(data.token)
+        dispatch({ type: REGISTER_USER_SUCCESS, payload: data.user })
+        return { success: true }
+    } catch (error) {
+        const message = error.response?.data?.message || 'Registration failed'
+        dispatch({ type: REGISTER_USER_FAIL, payload: message })
+        return { success: false, error: message }
+    }
+}
 
 export const login = (identifier, password) => async (dispatch) => {
     try {
@@ -71,17 +64,15 @@ export const login = (identifier, password) => async (dispatch) => {
         }
 
         const { data } = await api.post(`${import.meta.env.VITE_API}/login`, { identifier, password }, config)
-        console.log(data.user)
+        storeAuthToken(data.token)
         dispatch({
             type: LOGIN_SUCCESS,
             payload: data.user
         })
     } catch (error) {
-        console.log(error.response.data.message)
-
         dispatch({
             type: LOGIN_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || 'Login failed'
         })
     }
 }
@@ -95,6 +86,7 @@ export const loginWithGoogle = (idToken) => async (dispatch) => {
             { idToken },
             { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
         )
+        storeAuthToken(data.token)
         dispatch({ type: LOGIN_SUCCESS, payload: data.user })
     } catch (error) {
         dispatch({
@@ -105,6 +97,8 @@ export const loginWithGoogle = (idToken) => async (dispatch) => {
 }
 
 export const logout = () => async (dispatch) => {
+    clearAuthToken()
+    dispatch({ type: LOGOUT_SUCCESS })
     try {
         const config = {
             headers: {
@@ -113,9 +107,6 @@ export const logout = () => async (dispatch) => {
             withCredentials: true,
         }
         await api.get(`${import.meta.env.VITE_API}/logout`,config)
-        dispatch({
-            type: LOGOUT_SUCCESS,
-        })
         return true
     } catch (error) {
         dispatch({
@@ -167,7 +158,6 @@ export const updateProfile = (userData) => async (dispatch) => {
             payload: data.success
         })
     } catch (error) {
-        console.log(error)
         dispatch({
             type: UPDATE_PROFILE_FAIL,
             payload: error.response.data.message
@@ -186,6 +176,7 @@ export const updatePassword = (passwords) => async (dispatch) => {
             withCredentials: true,
         }
         const { data } = await api.put(`${import.meta.env.VITE_API}/password/update`, passwords, config)
+        storeAuthToken(data.token)
         dispatch({
             type: UPDATE_PASSWORD_SUCCESS,
             payload: data.success
@@ -193,7 +184,7 @@ export const updatePassword = (passwords) => async (dispatch) => {
     } catch (error) {
         dispatch({
             type: UPDATE_PASSWORD_FAIL,
-            payload: error.response.data.message
+            payload: error.response?.data?.message || 'Password update failed'
         })
     }
 }

@@ -2,18 +2,22 @@ const User = require('../models/user')
 const jwt = require("jsonwebtoken")
 
 exports.isAuthenticatedUser = async (req, res, next) => {
-
-    //    const token = req.header('Authorization').split(' ')[1];
-    // console.log(token)
-    const { token } = req.cookies
-
+    const authorization = req.get('Authorization') || ''
+    const bearerToken = /^Bearer\s+(.+)$/i.exec(authorization)?.[1]
+    const token = bearerToken || req.cookies?.token
 
     if (!token) {
         return res.status(401).json({ message: 'Login first to access this resource' })
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    req.user = await User.findById(decoded.id);
+    let decoded
+    try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET)
+    } catch {
+        return res.status(401).json({ message: 'Your session is invalid or has expired. Please log in again.' })
+    }
+
+    req.user = await User.findById(decoded.id)
     if (!req.user || req.user.isDeleted === true) {
         return res.status(401).json({ message: 'Your account is unavailable. Please contact support.' })
     }

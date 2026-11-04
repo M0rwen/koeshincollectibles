@@ -62,8 +62,6 @@ exports.firebaseLogin = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 exports.registerUser = async (req, res, next) => {
-    console.log(req.body)
-
     const { name, username, email, contactNumber, password } = req.body;
 
     if (!name || !username || !email || !contactNumber || !password) {
@@ -74,8 +72,6 @@ exports.registerUser = async (req, res, next) => {
         folder: 'avatars',
         width: 150,
         crop: "scale"
-    }, (err, res) => {
-        console.log(err, res);
     });
     const user = await User.create({
         name,
@@ -88,19 +84,10 @@ exports.registerUser = async (req, res, next) => {
             url: result.secure_url
         },
     })
-    //test token
-    const token = user.getJwtToken();
-
-    return res.status(201).json({
-        success: true,
-        user,
-        token
-    })
-    // sendToken(user, 200, res)
+    return sendToken(user, 201, res)
 }
 
 exports.loginUser = async (req, res, next) => {
-    console.log(req.body)
     const { identifier, password } = req.body;
 
     if (!identifier || !password) {
@@ -135,6 +122,11 @@ exports.loginUser = async (req, res, next) => {
 }
 
 exports.forgotPassword = async (req, res, next) => {
+    const frontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/+$/, '')
+    if (!frontendUrl) {
+        return res.status(500).json({ error: 'Password reset is not configured on this server' })
+    }
+
     const user = await User.findOne({ email: req.body.email, isDeleted: { $ne: true } });
     if (!user) {
         return res.status(404).json({ error: 'User not found with this email' })
@@ -144,7 +136,7 @@ exports.forgotPassword = async (req, res, next) => {
     const resetToken = user.getResetPasswordToken();
     await user.save({ validateBeforeSave: false });
     // Create reset password url
-    const resetUrl = `${req.protocol}://localhost:5173/password/reset/${resetToken}`;
+    const resetUrl = `${frontendUrl}/password/reset/${resetToken}`;
     const message = `Your password reset token is as follow:\n\n${resetUrl}\n\nIf you have not requested this email, then ignore it.`
     try {
         await sendEmail({
@@ -168,7 +160,6 @@ exports.forgotPassword = async (req, res, next) => {
 }
 
 exports.resetPassword = async (req, res, next) => {
-    console.log(req.params.token)
     // Hash URL token
     const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex')
     const user = await User.findOne({
@@ -176,8 +167,6 @@ exports.resetPassword = async (req, res, next) => {
         resetPasswordExpire: { $gt: Date.now() },
         isDeleted: { $ne: true }
     })
-    console.log(user)
-
     if (!user) {
         return res.status(400).json({ message: 'Password reset token is invalid or has been expired' })
 
@@ -193,12 +182,7 @@ exports.resetPassword = async (req, res, next) => {
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
     await user.save();
-    const token = user.getJwtToken();
-    return res.status(201).json({
-        success: true,
-        token,
-        user
-    });
+    return sendToken(user, 201, res)
 
 }
 
@@ -260,7 +244,6 @@ exports.updateProfile = async (req, res, next) => {
 }
 
 exports.updatePassword = async (req, res, next) => {
-    console.log(req.body.password)
     const user = await User.findOne({ _id: req.user.id, isDeleted: { $ne: true } }).select('+password');
     if (!user) {
         return res.status(401).json({ message: 'User session is no longer active' })
@@ -272,13 +255,7 @@ exports.updatePassword = async (req, res, next) => {
     }
     user.password = req.body.password;
     await user.save();
-    const token = user.getJwtToken();
-
-    return res.status(201).json({
-        success: true,
-        user,
-        token
-    });
+    return sendToken(user, 201, res)
 
 }
 

@@ -5,7 +5,6 @@ import Loader from '../Layout/Loader'
 import Sidebar from './SideBar'
 
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 // import axios from 'axios'
 // import { getToken } from '../../Utils/helpers'
 import { useDispatch, useSelector } from 'react-redux'
@@ -16,7 +15,7 @@ const ProcessOrder = () => {
     const dispatch = useDispatch();
     const { loading, order = {} } = useSelector(state => state.orderDetails)
 
-    const { error, isUpdated } = useSelector(state => state.order)
+    const { error, isUpdated, notificationQueued } = useSelector(state => state.order)
     const { shippingInfo, orderItems, paymentInfo, paymentMethod, user, orderStatus } = order
     const totals = orderItems ? calculateOrderTotals(orderItems) : null
 
@@ -80,13 +79,15 @@ const ProcessOrder = () => {
             // setError('')
         }
         if (isUpdated) {
-            successMsg('Order updated successfully');
+            successMsg(notificationQueued
+                ? 'Order status updated. Customer email is sending in the background.'
+                : 'Order status updated.')
             dispatch({ type: UPDATE_ORDER_RESET })
 
             // setIsUpdated('')
             navigate('/admin/orders')
         }
-    }, [error, isUpdated, orderId, dispatch, navigate])
+    }, [error, isUpdated, notificationQueued, orderId, dispatch, navigate])
 
     const updateOrderHandler = (id) => {
         dispatch(updateOrder(id, { status: status || order.orderStatus || 'Processing' }))
@@ -122,7 +123,11 @@ const ProcessOrder = () => {
                                     <hr />
                                     <h4 className="my-4">Payment</h4>
                                     <p><b>Method:</b> {paymentMethod || 'Not recorded'}</p>
-                                    <p className={isPaid ? "greenColor" : "redColor"}><b>{isPaid ? "PAID" : "NOT PAID"}</b></p>
+                                    <p className={isPaid ? "greenColor" : "redColor"}><b>{isPaid
+                                        ? paymentMethod === 'Demo payment' ? 'Paid (demo payment)' : 'Paid on delivery.'
+                                        : paymentMethod === 'Cash on Delivery' ? 'Pay on delivery.' : 'Payment pending'}</b></p>
+                                    {order.paidAt && <p><b>Paid date:</b> {new Date(order.paidAt).toLocaleString()}</p>}
+                                    {order.paymentInfo?.reference && <p><b>Payment reference:</b> {order.paymentInfo.reference}</p>}
 
                                     <h4 className="my-4">Order Status:</h4>
                                     <p className={order.orderStatus && String(order.orderStatus).includes('Delivered') ? "greenColor" : "redColor"} ><b>{orderStatus}</b></p>
