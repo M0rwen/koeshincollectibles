@@ -96,61 +96,56 @@ exports.newOrder = async (req, res, next) => {
     }
 
     const customer = { name: req.user.name, email: req.user.email }
-    const paymentNote = paymentMethod === 'Cash on Delivery'
-        ? 'Pay on delivery.'
-        : 'Paid (demo payment). Demo payment, no real charge.'
-    const paymentDate = order.paidAt
-        ? new Date(order.paidAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
-        : null
-    const emailItems = order.orderItems.map(item => (
-        `${escapeHtml(item.name)} (Qty ${item.quantity}) — PHP ${Number(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
-    )).join('<br>')
-    let receipt
-
-    try {
-        receipt = await createOrderReceiptPdf({
-            ...order.toObject(),
-            customer
-        })
-    } catch (receiptError) {
-        console.error('Order receipt PDF generation failed:', receiptError)
-    }
-
-    try {
-        await sendEmail({
-            email: req.user.email,
-            subject: `Koeshin's Collectibles — Order ${order.orderReference} confirmed`,
-            message: `
-                <strong>Order confirmed</strong><br>
-                Hi ${escapeHtml(req.user.name)},<br><br>
-                Thank you for your order ${escapeHtml(order.orderReference)}.<br><br>
-                ${emailItems}<br><br>
-                Subtotal: PHP ${Number(order.itemsPrice).toFixed(2)}<br>
-                Shipping: PHP ${Number(order.shippingPrice).toFixed(2)}<br>
-                Tax: PHP ${Number(order.taxPrice).toFixed(2)}<br>
-                Total: PHP ${Number(order.totalPrice).toFixed(2)}<br>
-                Payment status: ${isDemoPayment ? 'Paid (demo payment)' : 'Pending'}.<br>
-                ${paymentDate ? `Paid date: ${escapeHtml(paymentDate)}<br>` : ''}
-                ${isDemoPayment ? `Payment reference: ${escapeHtml(paymentReference)}<br>` : ''}
-                ${paymentNote}<br><br>
-                You can view your order in your Koeshin's Collectibles account.
-            `,
-            attachments: receipt ? [{
-                filename: receipt.filename,
-                content: receipt.buffer,
-                contentType: 'application/pdf'
-            }] : undefined
-        })
-    } catch (emailError) {
-        console.error('Order confirmation email failed:', emailError)
-    }
-
     res.status(200).json({
         success: true,
         order: {
             ...order.toObject(),
-            customer,
-            receiptPdf: receipt?.buffer.toString('base64')
+            customer
+        }
+    })
+
+    setImmediate(async () => {
+        try {
+            const paymentNote = paymentMethod === 'Cash on Delivery'
+                ? 'Pay on delivery.'
+                : 'Paid (demo payment). Demo payment, no real charge.'
+            const paymentDate = order.paidAt
+                ? new Date(order.paidAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
+                : null
+            const emailItems = order.orderItems.map(item => (
+                `${escapeHtml(item.name)} (Qty ${item.quantity}) — PHP ${Number(item.price * item.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+            )).join('<br>')
+            const receipt = await createOrderReceiptPdf({
+                ...order.toObject(),
+                customer
+            })
+
+            await sendEmail({
+                email: customer.email,
+                subject: `Koeshin's Collectibles — Order ${order.orderReference} confirmed`,
+                message: `
+                    <strong>Order confirmed</strong><br>
+                    Hi ${escapeHtml(customer.name)},<br><br>
+                    Thank you for your order ${escapeHtml(order.orderReference)}.<br><br>
+                    ${emailItems}<br><br>
+                    Subtotal: PHP ${Number(order.itemsPrice).toFixed(2)}<br>
+                    Shipping: PHP ${Number(order.shippingPrice).toFixed(2)}<br>
+                    Tax: PHP ${Number(order.taxPrice).toFixed(2)}<br>
+                    Total: PHP ${Number(order.totalPrice).toFixed(2)}<br>
+                    Payment status: ${isDemoPayment ? 'Paid (demo payment)' : 'Pending'}.<br>
+                    ${paymentDate ? `Paid date: ${escapeHtml(paymentDate)}<br>` : ''}
+                    ${isDemoPayment ? `Payment reference: ${escapeHtml(paymentReference)}<br>` : ''}
+                    ${paymentNote}<br><br>
+                    You can view your order in your Koeshin's Collectibles account.
+                `,
+                attachments: [{
+                    filename: receipt.filename,
+                    content: receipt.buffer,
+                    contentType: 'application/pdf'
+                }]
+            })
+        } catch (emailError) {
+            console.error('Order confirmation email failed:', emailError)
         }
     })
 }
@@ -301,13 +296,22 @@ exports.updateOrder = async (req, res, next) => {
         return next(error)
     }
 
-    // Generate the receipt after saving so email failures cannot undo the status update.
-    try {
-        const customer = await User.findOne({
-            _id: order.user,
-            isDeleted: { $ne: true }
-        }).select('email name')
-        if (customer && customer.email) {
+    res.status(200).json({
+        success: true,
+        notificationQueued: true
+    })
+
+    setImmediate(async () => {
+        try {
+            const customer = await User.findOne({
+                _id: order.user,
+                isDeleted: { $ne: true }
+            }).select('email name')
+            if (!customer?.email) {
+                console.error('Order status email failed: customer email address is unavailable.')
+                return
+            }
+
             const totals = calculateOrderTotals(order.orderItems)
             const itemsHtml = order.orderItems.map(item =>
                 `<tr>
@@ -321,24 +325,17 @@ exports.updateOrder = async (req, res, next) => {
             const receiptPayment = order.paymentMethod === 'Cash on Delivery'
                 ? (order.paymentInfo?.status === 'succeeded' ? 'Paid on delivery.' : 'Pay on delivery.')
                 : 'Paid (demo payment). Demo payment, no real charge.'
-            let receipt
+            const receipt = await createOrderReceiptPdf({
+                ...order.toObject(),
+                customer: { name: customer.name, email: customer.email }
+            })
 
-            try {
-                receipt = await createOrderReceiptPdf({
-                    ...order.toObject(),
-                    customer: { name: customer.name, email: customer.email }
-                })
-            } catch (receiptError) {
-                console.error('Order status receipt PDF generation failed:', receiptError)
-            }
-
-            try {
-                await sendEmail({
-                    email: customer.email,
-                    subject: nextStatus === 'Delivered'
-                        ? `Koeshin's Collectibles — Order ${order.orderReference || order._id} delivered`
-                        : `Koeshin's Collectibles — Order ${order.orderReference || order._id} is now ${nextStatus}`,
-                    message: `
+            await sendEmail({
+                email: customer.email,
+                subject: nextStatus === 'Delivered'
+                    ? `Koeshin's Collectibles — Order ${order.orderReference || order._id} delivered`
+                    : `Koeshin's Collectibles — Order ${order.orderReference || order._id} is now ${nextStatus}`,
+                message: `
                         <div style="font-family:sans-serif;max-width:600px;margin:auto">
                             <h2 style="margin-bottom:4px">${nextStatus === 'Delivered' ? 'Your order has been delivered' : 'Order status update'}</h2>
                             <p>Hi ${escapeHtml(customer.name)},</p>
@@ -365,28 +362,19 @@ exports.updateOrder = async (req, res, next) => {
                             <p>Payment: ${escapeHtml(receiptPayment)}</p>
                             ${order.paidAt ? `<p>Paid date: ${escapeHtml(new Date(order.paidAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }))}</p>` : ''}
                             ${order.paymentInfo?.reference ? `<p>Payment reference: ${escapeHtml(order.paymentInfo.reference)}</p>` : ''}
-                            <p style="color:#666;font-size:0.9em">${receipt
-                                ? 'Your PDF receipt is attached for safekeeping.'
-                                : 'Your order details are available in your order history.'}</p>
+                            <p style="color:#666;font-size:0.9em">Your PDF receipt is attached for safekeeping.</p>
                             <p>Thank you for shopping at Koeshin's Collectibles. Good things keep finding us.</p>
                         </div>
                     `,
-                    attachments: receipt ? [{
-                        filename: receipt.filename,
-                        content: receipt.buffer,
-                        contentType: 'application/pdf'
-                    }] : undefined
-                })
-            } catch (emailError) {
-                console.error('Order status email failed:', emailError)
-            }
+                attachments: [{
+                    filename: receipt.filename,
+                    content: receipt.buffer,
+                    contentType: 'application/pdf'
+                }]
+            })
+        } catch (statusEmailError) {
+            console.error('Order status email failed:', statusEmailError)
         }
-    } catch (statusEmailError) {
-        console.error('Order status email preparation failed:', statusEmailError)
-    }
-
-    res.status(200).json({
-        success: true,
     })
 }
 

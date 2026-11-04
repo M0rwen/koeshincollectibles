@@ -15,7 +15,7 @@ const ProcessOrder = () => {
     const dispatch = useDispatch();
     const { loading, order = {} } = useSelector(state => state.orderDetails)
 
-    const { error, isUpdated } = useSelector(state => state.order)
+    const { error, isUpdated, notificationQueued } = useSelector(state => state.order)
     const { shippingInfo, orderItems, paymentInfo, paymentMethod, user, orderStatus } = order
     const totals = orderItems ? calculateOrderTotals(orderItems) : null
 
@@ -79,13 +79,15 @@ const ProcessOrder = () => {
             // setError('')
         }
         if (isUpdated) {
-            successMsg('Order updated successfully');
+            successMsg(notificationQueued
+                ? 'Order status updated. Customer email is sending in the background.'
+                : 'Order status updated.')
             dispatch({ type: UPDATE_ORDER_RESET })
 
             // setIsUpdated('')
             navigate('/admin/orders')
         }
-    }, [error, isUpdated, orderId, dispatch, navigate])
+    }, [error, isUpdated, notificationQueued, orderId, dispatch, navigate])
 
     const updateOrderHandler = (id) => {
         dispatch(updateOrder(id, { status: status || order.orderStatus || 'Processing' }))

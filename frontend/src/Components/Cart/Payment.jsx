@@ -107,7 +107,11 @@ const Payment = () => {
                             <span><strong>Cash on Delivery</strong><small>Pay when your order arrives.</small></span>
                         </label>
                     </fieldset>
-                    <p className="payment-demo-note">Demo payment, no real charge.</p>
+                    <p className="payment-demo-note">
+                        {paymentMethod === 'Demo payment'
+                            ? 'Demo payment, no real charge.'
+                            : 'Pay when your order arrives.'}
+                    </p>
                     <div className="payment-total">
                         <span>Subtotal: {formatCurrency(totals.itemsPrice)}</span>
                     </div>
