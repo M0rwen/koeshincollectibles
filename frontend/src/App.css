@@ -974,8 +974,52 @@ ul.CTAs a {
 
 .review-feedback {
   margin-top: 10px;
-  color: var(--shop-orange);
+  color: var(--shop-danger);
   font-size: 11px;
+}
+
+.review-rating-field {
+  margin-bottom: 16px;
+  padding: 0;
+  border: 0;
+}
+
+.review-rating-field legend {
+  margin-bottom: 6px;
+  color: var(--shop-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.review-rating-options {
+  display: flex;
+  gap: 4px;
+}
+
+.review-rating-star {
+  padding: 0 2px;
+  color: var(--shop-line);
+  background: transparent;
+  border: 0;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.review-rating-star.is-selected {
+  color: var(--shop-star);
+}
+
+.review-rating-star:focus-visible {
+  outline: 2px solid var(--shop-green);
+  outline-offset: 3px;
+}
+
+.review-character-count {
+  display: block;
+  margin-top: 5px;
+  color: var(--shop-muted);
+  text-align: right;
 }
 
 .payment-page {
@@ -3062,6 +3106,219 @@ html[data-theme='dark'] .Toastify__close-button {
   color: var(--shop-ink);
 }
 
+.admin-products-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 14px;
+  color: var(--shop-ink);
+  background: var(--shop-surface);
+  border: 1px solid var(--shop-line);
+  border-radius: 12px;
+}
+
+.admin-products-toolbar .admin-products-view-toggle {
+  min-height: 40px;
+  color: var(--shop-ink);
+  border-color: var(--shop-line);
+}
+
+.admin-products-toolbar .admin-products-search {
+  width: min(300px, 100%);
+  min-height: 40px;
+  color: var(--shop-ink);
+  background: var(--shop-paper);
+  border-color: var(--shop-line);
+}
+
+.admin-products-toolbar .admin-products-search::placeholder {
+  color: var(--shop-muted);
+}
+
+.admin-products-toolbar .admin-products-search:focus {
+  border-color: var(--shop-green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--shop-green) 22%, transparent);
+}
+
+.admin-products-bulk-delete {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.admin-products-selected-count {
+  align-self: center;
+  margin-left: auto;
+  color: var(--shop-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-products-table-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-products-table-wrap > .table-responsive {
+  overflow-x: auto;
+  border: 1px solid var(--shop-line);
+  border-radius: 12px;
+  background: var(--shop-surface);
+}
+
+.admin-products-table {
+  width: 100%;
+  min-width: 660px;
+  margin-bottom: 0;
+  table-layout: fixed;
+  color: var(--shop-ink);
+  border-color: var(--shop-line);
+}
+
+.admin-products-table thead th {
+  padding: 12px 14px;
+  color: var(--shop-ink);
+  background: var(--shop-surface-raised);
+  border-color: var(--shop-line);
+  font-size: 0.875rem;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.admin-products-table tbody td {
+  height: 48px;
+  padding: 10px 14px;
+  color: var(--shop-ink);
+  background: var(--shop-surface);
+  border-color: var(--shop-line);
+  vertical-align: middle;
+}
+
+.admin-products-table tbody tr:nth-of-type(even) td {
+  background: color-mix(in srgb, var(--shop-green-light) 24%, var(--shop-surface));
+}
+
+.admin-products-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--shop-green-light) 44%, var(--shop-surface));
+}
+
+.admin-products-table tbody tr.is-selected td {
+  background: color-mix(in srgb, var(--shop-green-light) 62%, var(--shop-surface));
+}
+
+.admin-products-table .admin-products-select-cell {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  padding-inline: 8px;
+  text-align: center;
+}
+
+.admin-products-table .admin-products-select-cell .form-check {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-products-table .admin-products-select-cell .form-check-input {
+  position: static;
+  float: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.admin-products-table .admin-products-id-cell {
+  width: 84px;
+  color: var(--shop-muted);
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.admin-products-table .admin-products-name-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-products-table .admin-products-price-cell {
+  width: 140px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.admin-products-table .admin-products-stock-cell {
+  width: 90px;
+  text-align: right;
+}
+
+.admin-products-table .admin-products-actions-cell {
+  width: 128px;
+  text-align: center;
+}
+
+.admin-products-table .admin-products-sortable {
+  cursor: pointer;
+}
+
+.admin-products-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.admin-products-table .admin-product-action {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.admin-products-table .admin-product-action.btn-success {
+  width: auto;
+  min-width: 84px;
+  padding-inline: 10px;
+}
+
+@media (max-width: 767.98px) {
+  .admin-page-shell .admin-products-toolbar {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .admin-page-shell .admin-products-toolbar .admin-products-search {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+  }
+
+  .admin-page-shell .admin-products-toolbar .admin-products-view-toggle {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .admin-page-shell .admin-products-toolbar .admin-products-bulk-delete {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .admin-page-shell .admin-products-toolbar .admin-products-selected-count {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    margin-left: 0;
+  }
+}
+
 .admin-page-shell {
   width: min(1320px, calc(100% - 48px));
   margin: 24px auto;
@@ -3094,9 +3351,17 @@ html[data-theme='dark'] .Toastify__close-button {
   border-color: var(--shop-line);
 }
 
+.admin-page-shell .MuiDataGrid-cell {
+  padding: 10px 14px;
+}
+
+.admin-page-shell .MuiDataGrid-row:nth-of-type(even) {
+  background: color-mix(in srgb, var(--shop-green-light) 24%, var(--shop-surface));
+}
+
 .admin-page-shell .MuiDataGrid-row:hover,
 .admin-page-shell .MuiDataGrid-row.Mui-selected {
-  background: var(--shop-green-light);
+  background: color-mix(in srgb, var(--shop-green-light) 58%, var(--shop-surface));
 }
 
 .btn-primary,

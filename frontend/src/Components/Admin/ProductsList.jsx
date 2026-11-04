@@ -139,11 +139,11 @@ const ProductsList = () => {
     )
 
     const handleSelectAll = (e) => {
-        if (e.target.checked) {
-            setSelectedIds(paginatedProducts.map(p => p._id))
-        } else {
-            setSelectedIds([])
-        }
+        const pageIds = paginatedProducts.map(product => product._id)
+        setSelectedIds(prev => e.target.checked
+            ? [...new Set([...prev, ...pageIds])]
+            : prev.filter(id => !pageIds.includes(id))
+        )
     }
 
     const handleSelectOne = (id) => {
@@ -170,87 +170,98 @@ const ProductsList = () => {
                             <div className="alert alert-danger">{error}</div>
                         ) : (
                             <>
-                                <div className="admin-list-toolbar d-flex justify-content-between align-items-center mb-3">
+                                <div className="admin-list-toolbar admin-products-toolbar d-flex justify-content-between align-items-center mb-3">
                                     <button
                                         type="button"
-                                        className={`btn ${showDeleted ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                        className={`btn admin-products-view-toggle ${showDeleted ? 'btn-primary' : 'btn-outline-secondary'}`}
                                         onClick={toggleDeletedView}
                                     >
                                         {showDeleted ? 'Show Active Products' : 'Show Deleted Products'}
                                     </button>
                                     <Form.Control
+                                        className="admin-products-search"
                                         type="text"
                                         placeholder="Search products..."
                                         value={searchTerm}
                                         onChange={(e) => handleSearch(e.target.value)}
-                                        style={{ width: '300px' }}
                                     />
                                     {!showDeleted && (
                                         <button
-                                            className="btn btn-danger"
+                                            className="btn btn-danger admin-products-bulk-delete"
                                             onClick={bulkDeleteHandler}
                                             disabled={selectedIds.length === 0}
                                         >
-                                            Delete Selected ({selectedIds.length})
+                                            Delete selected
                                         </button>
                                     )}
+                                    {!showDeleted && (
+                                        <span className="admin-products-selected-count" aria-live="polite">
+                                            {selectedIds.length} selected
+                                        </span>
+                                    )}
                                 </div>
-                                
-                                <Table striped bordered hover responsive>
-                                    <thead>
+
+                                <div className="admin-products-table-wrap">
+                                <Table bordered responsive className="admin-products-table">
+                                    <thead className="admin-products-table-head">
                                         <tr>
-                                            {!showDeleted && <th style={{ width: '50px' }}>
+                                            {!showDeleted && <th className="admin-products-select-cell">
                                                 <Form.Check
                                                     type="checkbox"
+                                                    aria-label="Select all products on this page"
                                                     checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedIds.includes(p._id))}
                                                     onChange={handleSelectAll}
                                                 />
                                             </th>}
-                                            <th onClick={() => handleSort('_id')} style={{ cursor: 'pointer' }}>
+                                            <th className="admin-products-id-cell admin-products-sortable" onClick={() => handleSort('_id')}>
                                                 ID {sortConfig.key === '_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                             </th>
-                                            <th onClick={() => handleSort('name')} style={{ cursor: 'pointer' }}>
+                                            <th className="admin-products-name-cell admin-products-sortable" onClick={() => handleSort('name')}>
                                                 Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                             </th>
-                                            <th onClick={() => handleSort('price')} style={{ cursor: 'pointer' }}>
+                                            <th className="admin-products-price-cell admin-products-sortable" onClick={() => handleSort('price')}>
                                                 Price {sortConfig.key === 'price' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                             </th>
-                                            <th onClick={() => handleSort('stock')} style={{ cursor: 'pointer' }}>
+                                            <th className="admin-products-stock-cell admin-products-sortable" onClick={() => handleSort('stock')}>
                                                 Stock {sortConfig.key === 'stock' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                             </th>
-                                            <th>Actions</th>
+                                            <th className="admin-products-actions-cell">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {paginatedProducts.map(product => (
-                                            <tr key={product._id}>
-                                                {!showDeleted && <td>
+                                            <tr key={product._id} className={selectedIds.includes(product._id) ? 'is-selected' : undefined}>
+                                                {!showDeleted && <td className="admin-products-select-cell">
                                                     <Form.Check
                                                         type="checkbox"
+                                                        aria-label={`Select ${product.name}`}
                                                         checked={selectedIds.includes(product._id)}
                                                         onChange={() => handleSelectOne(product._id)}
                                                     />
                                                 </td>}
-                                                <td style={{ wordBreak: 'break-all', maxWidth: '200px' }}>{product._id}</td>
-                                                <td>{product.name}</td>
-                                                <td>{formatCurrency(product.price)}</td>
-                                                <td>{product.stock}</td>
-                                                <td>
+                                                <td className="admin-products-id-cell" title={product._id}>
+                                                    <span>{product._id.slice(-6)}</span>
+                                                </td>
+                                                <td className="admin-products-name-cell" title={product.name}>{product.name}</td>
+                                                <td className="admin-products-price-cell">{formatCurrency(product.price)}</td>
+                                                <td className="admin-products-stock-cell">{product.stock}</td>
+                                                <td className="admin-products-actions-cell">
                                                     {showDeleted
-                                                        ? <button className="btn btn-success py-1 px-2" onClick={() => restoreProductHandler(product._id)}>Restore</button>
-                                                        : <>
-                                                            <Link to={`/admin/product/${product._id}`} className="btn btn-primary py-1 px-2">
+                                                        ? <button className="btn btn-success admin-product-action" onClick={() => restoreProductHandler(product._id)}>Restore</button>
+                                                        : <div className="admin-products-actions">
+                                                            <Link to={`/admin/product/${product._id}`} className="btn btn-primary admin-product-action" aria-label={`Edit ${product.name}`} title="Edit product">
                                                                 <i className="fa fa-pencil"></i>
                                                             </Link>
-                                                            <button className="btn btn-danger py-1 px-2 ml-2" onClick={() => deleteProductHandler(product._id)}>
+                                                            <button className="btn btn-danger admin-product-action" onClick={() => deleteProductHandler(product._id)} aria-label={`Delete ${product.name}`} title="Delete product">
                                                                 <i className="fa fa-trash"></i>
                                                             </button>
-                                                        </>}
+                                                        </div>}
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </Table>
+                                </div>
                                 {sortedProducts.length === 0 && (
                                     <div className="alert alert-info">No products found</div>
                                 )}

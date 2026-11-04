@@ -241,17 +241,20 @@ export const productReducer = (state = {}, action) => {
         case BULK_DELETE_PRODUCTS_REQUEST:
             return {
                 ...state,
-                loading: true
+                loading: true,
+                error: null
             }
         case BULK_DELETE_PRODUCTS_SUCCESS:
             return {
                 ...state,
                 loading: false,
-                isBulkDeleted: action.payload.success || true
+                isBulkDeleted: Boolean(action.payload?.success)
             }
         case BULK_DELETE_PRODUCTS_FAIL:
             return {
                 ...state,
+                loading: false,
+                isBulkDeleted: false,
                 error: action.payload
             }
         case BULK_DELETE_PRODUCTS_RESET:

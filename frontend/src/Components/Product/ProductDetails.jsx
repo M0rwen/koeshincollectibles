@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import MetaData from '../Layout/MetaData'
-import { Carousel } from 'react-bootstrap'
+import { Carousel, Modal } from 'react-bootstrap'
 
 import { formatCurrency } from '../../Utils/helpers'
 import { startBuyNowCheckout, getPendingBuyNow, clearPendingBuyNow, setPendingBuyNow } from '../../Utils/checkout'
@@ -21,6 +21,8 @@ const ProductDetails = () => {
     const [comment, setComment] = useState('')
     const [errorReview, setErrorReview] = useState('');
     const [success, setSuccess] = useState('')
+    const [showReviewModal, setShowReviewModal] = useState(false)
+    const [reviewSubmitting, setReviewSubmitting] = useState(false)
 
     let { id } = useParams()
     const dispatch = useDispatch()
@@ -28,6 +30,9 @@ const ProductDetails = () => {
     const navigate = useNavigate()
     const stock = Math.max(0, Number(product.stock) || 0)
     const productLoaded = loadedProductId === id && product?._id === id
+    const existingReview = product.reviews?.find(
+        review => user && String(review.user) === String(user._id)
+    )
     const displayQuantity = productLoaded && stock > 0
         ? Math.min(quantity, stock)
         : quantity
@@ -76,46 +81,39 @@ const ProductDetails = () => {
     //     }
     // }
 
-    function setUserRatings() {
-        const stars = document.querySelectorAll('.star');
-        stars.forEach((star, index) => {
-            star.starValue = index + 1;
-            ['click', 'mouseover', 'mouseout'].forEach(function (e) {
-                star.addEventListener(e, showRatings);
-            })
-        })
-        function showRatings(e) {
-            stars.forEach((star, index) => {
-                if (e.type === 'click') {
-                    if (index < this.starValue) {
-                        star.classList.add('orange');
-                        setRating(this.starValue)
-                    } else {
-                        star.classList.remove('orange')
-                    }
-                }
-                if (e.type === 'mouseover') {
-                    if (index < this.starValue) {
-                        star.classList.add('yellow');
-                    } else {
-                        star.classList.remove('yellow')
-                    }
-                }
-                if (e.type === 'mouseout') {
-                    star.classList.remove('yellow')
-                }
-            })
-        }
+    const openReviewForm = () => {
+        setRating(existingReview?.rating || 0)
+        setComment(existingReview?.comment || '')
+        setErrorReview('')
+        setSuccess(false)
+        setShowReviewModal(true)
     }
 
-    const reviewHandler = async () => {
-        const result = await dispatch(submitReview({ rating, comment, productId: id }))
-        if (result?.success) {
-            setSuccess(true)
-            setErrorReview('')
-        } else {
-            setErrorReview(result?.message || 'Failed to submit review.')
-            setSuccess(false)
+    const reviewHandler = async event => {
+        event.preventDefault()
+        if (!Number.isInteger(Number(rating)) || Number(rating) < 1 || Number(rating) > 5) {
+            setErrorReview('Choose a rating from 1 to 5 stars.')
+            return
+        }
+        if (!comment.trim() || comment.trim().length > 1000) {
+            setErrorReview('Enter a review of 1000 characters or fewer.')
+            return
+        }
+
+        setReviewSubmitting(true)
+        try {
+            const result = await dispatch(submitReview({ rating, comment, productId: id }))
+            if (result?.success) {
+                await dispatch(getProductDetails(id))
+                setSuccess(true)
+                setErrorReview('')
+                setShowReviewModal(false)
+            } else {
+                setErrorReview(result?.message || 'Failed to submit review.')
+                setSuccess(false)
+            }
+        } finally {
+            setReviewSubmitting(false)
         }
     }
 
@@ -215,97 +213,58 @@ const ProductDetails = () => {
                     <p>{product.description}</p>
                     <hr />
                     <p id="product_seller mb-3">Sold by: <strong>{product.seller}</strong></p>
-                    {/* <div className="alert alert-danger mt-5" type='alert'>Login to post your review.</div> */}
-                    {/* <button id="review_btn" type="button" className="btn btn-primary mt-4" data-toggle="modal" data-target="#ratingModal"  >
-                        Submit Your Review
-                    </button> */}
-                    {user ? <button id="review_btn" type="button" className="btn btn-primary mt-4" data-toggle="modal" data-target="#ratingModal" onClick={setUserRatings} >
-                        Submit Your Review
+                    {user ? <button id="review_btn" type="button" className="btn btn-primary mt-4" onClick={openReviewForm} disabled={!productLoaded}>
+                        {existingReview ? 'Edit Your Review' : 'Write a Review'}
                     </button> :
                         <div className="alert alert-danger mt-5" type='alert'>Login to post your review.</div>}
-                    {errorReview && <p className="review-feedback" role="alert" style={{ color: 'red' }}>{errorReview}</p>}
-                    {success && !errorReview && <p className="review-feedback" role="status" style={{ color: 'green' }}>Review submitted successfully.</p>}
-
-                    {/* <div className="row mt-2 mb-5">
-                        <div className="rating w-50">
-
-                            <div className="modal fade" id="ratingModal" tabIndex="-1" role="dialog" aria-labelledby="ratingModalLabel" aria-hidden="true">
-                                <div className="modal-dialog" role="document">
-                                    <div className="modal-content">
-                                        <div className="modal-header">
-                                            <h5 className="modal-title" id="ratingModalLabel">Submit Review</h5>
-                                            <button type="button" className="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <div className="modal-body">
-
-                                            <ul className="stars" >
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                            </ul>
-
-                                            <textarea
-                                                name="review"
-                                                id="review" className="form-control mt-3"
-
-
+                    {errorReview && !showReviewModal && <p className="review-feedback" role="alert">{errorReview}</p>}
+                    {success && <p className="review-feedback" role="status">Your review has been saved.</p>}
+                    <Modal show={showReviewModal} onHide={() => setShowReviewModal(false)} centered>
+                        <Modal.Header closeButton>
+                            <Modal.Title>{existingReview ? 'Edit your review' : 'Write a review'}</Modal.Title>
+                        </Modal.Header>
+                        <form onSubmit={reviewHandler}>
+                            <Modal.Body>
+                                {errorReview && <p className="review-feedback" role="alert">{errorReview}</p>}
+                                <fieldset className="review-rating-field">
+                                    <legend>Your rating</legend>
+                                    <div className="review-rating-options">
+                                        {[1, 2, 3, 4, 5].map(value => (
+                                            <button
+                                                key={value}
+                                                type="button"
+                                                className={`review-rating-star${value <= rating ? ' is-selected' : ''}`}
+                                                aria-label={`${value} star${value === 1 ? '' : 's'}`}
+                                                aria-pressed={rating === value}
+                                                onClick={() => setRating(value)}
                                             >
-                                            </textarea>
-
-
-                                            <button className="btn my-3 float-right review-btn px-4 text-white" data-dismiss="modal" aria-label="Close" >Submit</button>
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div> */}
-                    <div className="product-review-area">
-                        <div>
-
-                            <div className="modal fade" id="ratingModal" tabIndex="-1" role="dialog" aria-labelledby="ratingModalLabel" aria-hidden="true">
-                                <div className="modal-dialog" role="document">
-                                    <div className="modal-content">
-                                        <div className="modal-header">
-                                            <h5 className="modal-title" id="ratingModalLabel">Submit Review</h5>
-                                            <button type="button" className="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
+                                                ★
                                             </button>
-                                        </div>
-                                        <div className="modal-body">
-
-                                            <ul className="stars" >
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                                <li className="star"><i className="fa fa-star"></i></li>
-                                            </ul>
-
-                                            <textarea
-                                                name="review"
-                                                id="review" className="form-control mt-3"
-                                                value={comment}
-                                                onChange={(e) => setComment(e.target.value)}
-
-                                            >
-                                            </textarea>
-
-
-                                            <button className="btn my-3 float-right review-btn px-4 text-white" data-dismiss="modal" aria-label="Close" onClick={reviewHandler} >Submit</button>
-                                        </div>
+                                        ))}
                                     </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
+                                </fieldset>
+                                <label className="form-label" htmlFor="review-comment">Your review</label>
+                                <textarea
+                                    id="review-comment"
+                                    className="form-control"
+                                    value={comment}
+                                    onChange={event => setComment(event.target.value)}
+                                    maxLength={1000}
+                                    rows={5}
+                                    required
+                                />
+                                <small className="review-character-count">{comment.length}/1000</small>
+                            </Modal.Body>
+                            <Modal.Footer>
+                                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowReviewModal(false)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary" disabled={reviewSubmitting}>
+                                    {reviewSubmitting ? 'Saving…' : existingReview ? 'Update review' : 'Submit review'}
+                                </button>
+                            </Modal.Footer>
+                        </form>
+                    </Modal>
                 </div>
                 {product.reviews && product.reviews.length > 0 && (
 

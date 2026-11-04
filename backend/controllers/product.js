@@ -1,5 +1,6 @@
 const Product = require('../models/product')
 const Order = require('../models/order')
+const mongoose = require('mongoose')
 const cloudinary = require('cloudinary')
 const fs = require('fs/promises')
 const path = require('path')
@@ -308,6 +309,23 @@ exports.restoreProduct = async (req, res) => {
 
 exports.createProductReview = async (req, res, next) => {
     const { rating, comment, productId } = req.body;
+    const numericRating = Number(rating)
+    const normalizedComment = typeof comment === 'string' ? comment.trim() : ''
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        return res.status(400).json({ success: false, message: 'A valid product ID is required.' })
+    }
+    if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+        return res.status(400).json({ success: false, message: 'Rating must be a whole number from 1 to 5.' })
+    }
+    if (!normalizedComment || normalizedComment.length > 1000) {
+        return res.status(400).json({ success: false, message: 'Review text is required and must be 1000 characters or fewer.' })
+    }
+
+    const product = await Product.findOne({ _id: productId, isDeleted: { $ne: true } });
+    if (!product) {
+        return res.status(404).json({ success: false, message: 'Product not found' })
+    }
 
     // 6.1 — buyers only: the reviewer must have a Delivered order containing this product
     const purchasedOrder = await Order.findOne({
@@ -323,24 +341,20 @@ exports.createProductReview = async (req, res, next) => {
         })
     }
 
-    const cleanedComment = typeof comment === 'string' ? badWordsFilter.clean(comment) : comment
+    const cleanedComment = badWordsFilter.clean(normalizedComment)
 
     const review = {
         user: req.user._id,
         name: req.user.name,
-        rating: Number(rating),
+        rating: numericRating,
         comment: cleanedComment
-    }
-    const product = await Product.findOne({ _id: productId, isDeleted: { $ne: true } });
-    if (!product) {
-        return res.status(404).json({ success: false, message: 'Product not found' })
     }
     const existingReview = product.reviews.find(
         review => review.user.toString() === req.user._id.toString()
     )
     if (existingReview) {
         existingReview.comment = cleanedComment
-        existingReview.rating = Number(rating)
+        existingReview.rating = numericRating
         existingReview.name = req.user.name
         existingReview.isDeleted = false
         existingReview.deletedAt = undefined
