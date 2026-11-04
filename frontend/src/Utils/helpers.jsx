@@ -10,6 +10,15 @@ export const formatCurrency = (amount) => new Intl.NumberFormat('en-PH', {
     currency: 'PHP'
 }).format(Number(amount) || 0)
 
+export const formatCompactCurrency = (value) => {
+    const amount = Number(value)
+    if (Math.abs(amount) >= 1000) {
+        const thousands = amount / 1000
+        return `₱${Number.isInteger(thousands) ? thousands : thousands.toFixed(1)}k`
+    }
+    return `₱${Math.round(amount)}`
+}
+
 export const calculateOrderTotals = (cartItems) => {
     const itemsPriceCents = cartItems.reduce((total, item) => {
         const price = Number(item.price)

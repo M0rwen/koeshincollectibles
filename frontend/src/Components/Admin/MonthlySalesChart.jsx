@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { formatCurrency, getToken } from "../../Utils/helpers";
+import { Area, AreaChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { formatCompactCurrency, formatCurrency, getToken } from '../../Utils/helpers'
 import api from "../../Utils/api";
 
 export default function MonthlySalesChart() {
@@ -11,7 +11,6 @@ export default function MonthlySalesChart() {
 
     useEffect(() => {
         let active = true
-        setError('')
         const config = {
             headers: { Authorization: `Bearer ${getToken()}` }
         }
@@ -22,7 +21,10 @@ export default function MonthlySalesChart() {
 
         api.get(`${import.meta.env.VITE_API}/admin/sales-per-month${query}`, config)
             .then(({ data }) => {
-                if (active) setSales(data.salesPerMonth)
+                if (active) {
+                    setError('')
+                    setSales(data.salesPerMonth)
+                }
             })
             .catch(err => {
                 if (active) setError(err.response?.data?.message || 'Failed to load chart data.')
@@ -37,53 +39,87 @@ export default function MonthlySalesChart() {
     }
 
     return (
-        <div style={{ padding: '16px 0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                <strong>Monthly Sales</strong>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
-                    From
-                    <input
-                        type="month"
-                        value={startDate}
-                        max={endDate || undefined}
-                        onChange={e => setStartDate(e.target.value)}
-                        style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
-                    To
-                    <input
-                        type="month"
-                        value={endDate}
-                        min={startDate || undefined}
-                        onChange={e => setEndDate(e.target.value)}
-                        style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
-                </label>
-                {(startDate || endDate) && (
-                    <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={clearFilter}
-                    >
-                        Clear filter
-                    </button>
+        <div className="col-12 admin-sales-chart-column">
+            <section className="admin-sales-chart" aria-labelledby="monthly-sales-title">
+                <div className="admin-sales-chart-toolbar">
+                    <strong id="monthly-sales-title" className="admin-sales-chart-title">Monthly Sales</strong>
+                    <label className="admin-sales-filter">
+                        From
+                        <input
+                            type="month"
+                            value={startDate}
+                            max={endDate || undefined}
+                            onChange={e => setStartDate(e.target.value)}
+                        />
+                    </label>
+                    <label className="admin-sales-filter">
+                        To
+                        <input
+                            type="month"
+                            value={endDate}
+                            min={startDate || undefined}
+                            onChange={e => setEndDate(e.target.value)}
+                        />
+                    </label>
+                    {(startDate || endDate) && (
+                        <button type="button" className="admin-sales-clear-filter" onClick={clearFilter}>
+                            Clear filter
+                        </button>
+                    )}
+                </div>
+                {error && <div className="alert alert-danger">{error}</div>}
+                {sales.length === 0 && !error ? (
+                    <p className="admin-sales-chart-empty">No sales data for the selected period.</p>
+                ) : (
+                    <>
+                        <div className="admin-sales-chart-plot">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={sales} margin={{ top: 30, right: 18, bottom: 8, left: 14 }}>
+                                    <defs>
+                                        <linearGradient id="monthly-sales-gradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="var(--shop-green)" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="var(--shop-green)" stopOpacity={0.02} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid vertical={false} stroke="var(--shop-line)" strokeDasharray="4 5" />
+                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: 'var(--shop-muted)', fontSize: 12 }} />
+                                    <YAxis
+                                        width={66}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: 'var(--shop-muted)', fontSize: 12 }}
+                                        tickFormatter={formatCompactCurrency}
+                                    />
+                                    <Tooltip
+                                        formatter={value => formatCurrency(value)}
+                                        contentStyle={{ backgroundColor: 'var(--shop-surface)', borderColor: 'var(--shop-line)', borderRadius: 10, color: 'var(--shop-ink)' }}
+                                        labelStyle={{ color: 'var(--shop-ink)' }}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="total"
+                                        stroke="var(--shop-green)"
+                                        strokeWidth={3}
+                                        fill="url(#monthly-sales-gradient)"
+                                        dot={{ r: 5, fill: 'var(--shop-surface)', stroke: 'var(--shop-green)', strokeWidth: 3 }}
+                                        activeDot={{ r: 7, fill: 'var(--shop-orange)', stroke: 'var(--shop-surface)', strokeWidth: 2 }}
+                                    >
+                                        <LabelList
+                                            dataKey="total"
+                                            position="top"
+                                            formatter={formatCompactCurrency}
+                                            fill="var(--shop-ink)"
+                                            fontSize={12}
+                                            fontWeight={700}
+                                        />
+                                    </Area>
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                        {sales.length === 1 && <p className="admin-sales-chart-note">More months will appear as sales come in.</p>}
+                    </>
                 )}
-            </div>
-            {error && <div className="alert alert-danger">{error}</div>}
-            {sales.length === 0 && !error ? (
-                <p className="text-muted" style={{ textAlign: 'center', padding: '32px 0' }}>No sales data for the selected period.</p>
-            ) : (
-                <ResponsiveContainer width="90%" height={400}>
-                    <LineChart data={sales} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                        <Line type="monotone" dataKey="total" stroke="#8884d8" />
-                        <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
-                        <XAxis dataKey="month" />
-                        <YAxis tickFormatter={formatCurrency} />
-                        <Tooltip formatter={formatCurrency} />
-                    </LineChart>
-                </ResponsiveContainer>
-            )}
+            </section>
         </div>
-    );
+    )
 }

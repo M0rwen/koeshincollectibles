@@ -1,96 +1,69 @@
-import React, { useState, useEffect } from 'react'
-import { getToken } from "../../Utils/helpers";
-import api from "../../Utils/api";
-import Loader from '../Layout/Loader';
+import { useEffect, useState } from 'react'
+import api from '../../Utils/api'
+import Loader from '../Layout/Loader'
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 
-import { PieChart, Pie, Legend, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+const pieColors = ['var(--shop-green)', 'var(--shop-orange)', 'var(--shop-yellow)', 'var(--shop-muted)', 'var(--shop-star)']
+
+const renderPercentageLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.55
+    const angle = -midAngle * Math.PI / 180
+    const x = cx + radius * Math.cos(angle)
+    const y = cy + radius * Math.sin(angle)
+    return (
+        <text x={x} y={y} fill="var(--shop-primary-ink)" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700}>
+            {`${Math.round(percent * 100)}%`}
+        </text>
+    )
+}
 
 export default function ProductSalesChart() {
     const [sales, setSales] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
-    const pieColors = [
-        "#FF6633",
-        "#FFB399",
-        "#FF33FF",
-        "#FFFF99",
-        "#00B3E6",
-        "#E6B333",
-        "#3366E6",
-        "#999966",
-        "#809980",
-        "#E6FF80",
-        "#1AFF33",
-        "#999933",
-        "#FF3380",
-        "#CCCC00",
-        "#66E64D",
-        "#4D80CC",
-        "#FF4D4D",
-        "#99E6E6",
-        "#6666FF"
-    ]
-    // console.log(data)
 
-    const RADIAN = Math.PI / 180;
-    const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
-        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-        const x = cx + radius * Math.cos(-midAngle * RADIAN);
-        const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-        return (
-            <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
-                {`${percent}%`}
-            </text>
-        );
-    };
-    const productSales = async () => {
-        try {
-            const config = {
-                headers: {
-
-                    'Authorization': `Bearer ${getToken()}`
-                }
-            }
-
-            const { data } = await api.get(`${import.meta.env.VITE_API}/admin/product-sales`, config)
-            setSales(data.totalPercentage)
-
-        } catch (error) {
-            setError(error.response.data.message)
-
-        }
-    }
     useEffect(() => {
-        productSales()
+        api.get(`${import.meta.env.VITE_API}/admin/product-sales`)
+            .then(({ data }) => setSales(data.totalPercentage))
+            .catch(error => setError(error.response?.data?.message || 'Failed to load product sales.'))
+            .finally(() => setLoading(false))
     }, [])
 
-
     return (
-        <ResponsiveContainer width="90%" height={1000}>
-            <PieChart width={1000} height={1000}>
-                {/* <Pie data={data} dataKey="percent" nameKey="name" cx="50%" cy="50%" outerRadius={50} fill="#8884d8" /> */}
-                <Pie
-                    dataKey="percent"
-                    nameKey="name"
-                    isAnimationActive={true}
-                    data={sales}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={300}
-                    fill="#8884d8"
-                    label={renderCustomizedLabel}
-                    labelLine={false}
-                // label
-                >  {
-                        sales.map((entry, index) => <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />)
-                    }
-                </Pie>
-                <Tooltip />
-                <Legend layout="vertical" verticalAlign="top" align="right" />
-            </PieChart>
-        </ResponsiveContainer>
-
-
-    );
+        <div className="col-12 admin-sales-chart-column">
+            <section className="admin-sales-chart" aria-labelledby="product-sales-title">
+                <h2 id="product-sales-title" className="admin-sales-chart-title">Sales by Product</h2>
+                {loading ? <div className="admin-sales-chart-state"><Loader /></div> : error ? (
+                    <p className="admin-sales-chart-empty" role="alert">{error}</p>
+                ) : sales.length === 0 ? (
+                    <p className="admin-sales-chart-empty">No product sales to display yet.</p>
+                ) : (
+                    <div className="admin-sales-chart-plot">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart margin={{ top: 8, right: 14, bottom: 8, left: 14 }}>
+                                <Pie
+                                    dataKey="percent"
+                                    nameKey="name"
+                                    data={sales}
+                                    cx="50%"
+                                    cy="46%"
+                                    innerRadius="42%"
+                                    outerRadius="66%"
+                                    paddingAngle={sales.length > 1 ? 3 : 0}
+                                    label={renderPercentageLabel}
+                                    labelLine={false}
+                                >
+                                    {sales.map((entry, index) => <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />)}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'var(--shop-surface)', borderColor: 'var(--shop-line)', borderRadius: 10, color: 'var(--shop-ink)' }}
+                                />
+                                <Legend verticalAlign="bottom" height={32} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
+            </section>
+        </div>
+    )
 }

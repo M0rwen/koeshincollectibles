@@ -36,7 +36,7 @@ const Home = () => {
     const navigate = useNavigate()
     const searchParams = useMemo(() => new URLSearchParams(search), [search])
     const keyword = searchParams.get('keyword') || routeKeyword || ''
-    const { loading, products, error, productsCount, filteredProductsCount, resPerPage } = useSelector(state => state.products)
+    const { loading, products, error, productsCount, filteredProductsCount } = useSelector(state => state.products)
     const price = useMemo(() => [
         searchParams.get('price[gte]') || '',
         searchParams.get('price[lte]') || ''
@@ -50,9 +50,9 @@ const Home = () => {
     const [catalogRetry, setCatalogRetry] = useState(0)
     const dispatch = useDispatch()
     const sentinelRef = useRef(null)
+    const loadingMoreRef = useRef(false)
     const previousCatalogFilters = useRef(JSON.stringify([pathname, keyword, price, category, rating, reviewCount]))
     const count = filteredProductsCount ?? productsCount ?? 0
-    const pageCount = Math.max(1, Math.ceil(count / (resPerPage || 1)))
     const hasMore = products.length < count
     const minimumPrice = Number(price[0]) || 1
     const maximumPrice = Number(price[1]) || 3500
@@ -107,22 +107,27 @@ const Home = () => {
             return
         }
         if (priceRangeInvalid) return
-        dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, !isHomePage && currentPage > 1))
+        dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, currentPage > 1))
     }, [currentPage, keyword, price, category, rating, reviewCount, priceRangeInvalid, catalogRetry, dispatch, catalogFilterKey, isHomePage])
 
     useEffect(() => {
         const sentinel = sentinelRef.current
-        if (isHomePage || !sentinel || loading || error || !hasMore) return
+        if (!sentinel || loading || error || !hasMore) return
 
         const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting) {
+            if (entry.isIntersecting && !loadingMoreRef.current) {
+                loadingMoreRef.current = true
                 setCurrentPage(page => page + 1)
             }
         }, { rootMargin: '320px 0px' })
 
         observer.observe(sentinel)
         return () => observer.disconnect()
-    }, [error, hasMore, isHomePage, loading])
+    }, [error, hasMore, loading])
+
+    useEffect(() => {
+        if (!loading) loadingMoreRef.current = false
+    }, [loading])
 
     const updateCatalogUrl = (updates, { replace = false } = {}) => {
         const params = new URLSearchParams(search)
@@ -163,11 +168,15 @@ const Home = () => {
     }
 
     const retryProducts = () => {
+        if (currentPage > 1) {
+            dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, true))
+            return
+        }
         if (isCollectionsPage || isHomePage) {
             setCatalogRetry(retry => retry + 1)
             return
         }
-        dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, !isHomePage && currentPage > 1))
+        dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, currentPage > 1))
     }
 
     const hasFilters = Boolean(keyword || category || rating || reviewCount || price[0] || price[1])
@@ -278,39 +287,22 @@ const Home = () => {
                                     {products.map(product => <Product key={product._id} product={product} />)}
                                 </div>
                                 {error && <p className="landing-load-note" role="alert">{error}</p>}
-                                {pageCount > 1 && (
-                                    <nav className="landing-pagination" aria-label="Product pages">
-                                        <button
-                                            type="button"
-                                            className="store-button"
-                                            onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
-                                            disabled={currentPage <= 1 || loading}
-                                        >
-                                            Previous
-                                        </button>
-                                        <div className="landing-page-numbers">
-                                            {Array.from({ length: pageCount }, (_, index) => index + 1).map(page => (
-                                                <button
-                                                    type="button"
-                                                    key={page}
-                                                    className={`store-button${currentPage === page ? ' is-current' : ''}`}
-                                                    aria-current={currentPage === page ? 'page' : undefined}
-                                                    onClick={() => setCurrentPage(page)}
-                                                    disabled={loading}
-                                                >
-                                                    {page}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="store-button"
-                                            onClick={() => setCurrentPage(page => Math.min(pageCount, page + 1))}
-                                            disabled={currentPage >= pageCount || loading}
-                                        >
-                                            Next
-                                        </button>
-                                    </nav>
+                                {error && currentPage > 1 && (
+                                    <div className="infinite-error" role="alert">
+                                        <span>More finds couldn't load.</span>
+                                        <button type="button" onClick={retryProducts}>Retry</button>
+                                    </div>
+                                )}
+                                {loading && currentPage > 1 && (
+                                    <div className="infinite-loading" role="status">
+                                        <span className="loading-mark" />Loading more finds...
+                                    </div>
+                                )}
+                                {!loading && !error && hasMore && (
+                                    <div ref={sentinelRef} className="infinite-sentinel" aria-hidden="true" />
+                                )}
+                                {!loading && !hasMore && products.length > 0 && (
+                                    <p className="collection-end">You've reached the end of the cabinet.</p>
                                 )}
                             </>
                         ) : (
@@ -526,7 +518,7 @@ const Home = () => {
                             {error && currentPage > 1 && (
                                 <div className="infinite-error" role="alert">
                                     <span>More finds couldn't load.</span>
-                                    <button type="button" onClick={() => dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, !isHomePage && currentPage > 1))}>Retry</button>
+                                    <button type="button" onClick={() => dispatch(getProducts(currentPage, keyword, price, category, rating, reviewCount, currentPage > 1))}>Retry</button>
                                 </div>
                             )}
                             {loading && currentPage > 1 && <div className="infinite-loading" role="status"><span className="loading-mark" />Loading more finds...</div>}
