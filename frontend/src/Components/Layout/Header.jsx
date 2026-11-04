@@ -12,8 +12,9 @@ const Header = ({ theme, onToggleTheme }) => {
     const { cartItems } = useSelector(state => state.cart)
 
     const logoutHandler = async () => {
-        const loggedOut = await dispatch(logout())
+        const logoutRequest = dispatch(logout())
         navigate('/login', { replace: true })
+        const loggedOut = await logoutRequest
         if (loggedOut) {
             toast.success('Logged out', { position: 'bottom-right' })
         } else {

@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from "react-router-dom";
 import MetaData from '../Layout/MetaData';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 // import { getToken } from '../../Utils/helpers'
 import { useDispatch, useSelector } from 'react-redux'
 import { updatePassword, clearErrors } from '../../actions/userActions'
@@ -86,10 +85,7 @@ const UpdatePassword = () => {
             toast.error('New password must be at least 6 characters.', { position: 'bottom-right' })
             return
         }
-        const formData = new FormData();
-        formData.set('oldPassword', oldPassword);
-        formData.set('password', password);
-        dispatch(updatePassword(formData))
+        dispatch(updatePassword({ oldPassword, password }))
     }
 
     return (

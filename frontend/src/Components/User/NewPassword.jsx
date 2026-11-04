@@ -2,13 +2,17 @@ import  {  useState, useEffect } from 'react'
 import { useNavigate, useParams } from "react-router-dom";
 import MetaData from '../Layout/MetaData'
 import { toast } from 'react-toastify';
-import axios from 'axios';
+import api from '../../Utils/api'
+import { storeAuthToken } from '../../Utils/authToken'
+import { useDispatch } from 'react-redux'
+import { loadUser } from '../../actions/userActions'
 
 const NewPassword = () => {
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
 
     let navigate = useNavigate();
+    const dispatch = useDispatch()
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
 
@@ -16,13 +20,9 @@ const NewPassword = () => {
 
     const resetPassword = async (token, passwords) => {
         try {
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-            const { data } = await axios.put(`${import.meta.env.VITE_API}/password/reset/${token}`, passwords, config)
-            
+            const { data } = await api.put(`${import.meta.env.VITE_API}/password/reset/${token}`, passwords)
+            storeAuthToken(data.token)
+            await dispatch(loadUser())
             setSuccess(data.success)
         } catch (error) {
             setError(error.response?.data?.message || error.message || 'Password reset failed.')
@@ -38,10 +38,10 @@ const NewPassword = () => {
             toast.success('password updated', {
                 position: 'bottom-right'
             });
-            navigate('/login')
+            navigate('/')
         }
 
-    }, [error, success,])
+    }, [error, navigate, success])
 
     const submitHandler = (e) => {
         e.preventDefault();

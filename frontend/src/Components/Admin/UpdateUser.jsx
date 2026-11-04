@@ -5,7 +5,7 @@ import Sidebar from './SideBar'
 
 import { errMsg, successMsg, getToken } from '../../Utils/helpers';
 
-import axios from 'axios';
+import api from '../../Utils/api';
 
 const UpdateUser = () => {
     const [name, setName] = useState('')
@@ -27,7 +27,7 @@ const UpdateUser = () => {
     const getUserDetails = async (id) => {
 
         try {
-            const { data } = await axios.get(`${import.meta.env.VITE_API}/admin/user/${id}`, config)
+            const { data } = await api.get(`${import.meta.env.VITE_API}/admin/user/${id}`, config)
             setUser(data.user)
             setLoading(false)
 
@@ -38,7 +38,7 @@ const UpdateUser = () => {
 
     const updateUser = async (id, userData) => {
         try {
-            const { data } = await axios.put(`${import.meta.env.VITE_API}/admin/user/${id}`, userData, config)
+            const { data } = await api.put(`${import.meta.env.VITE_API}/admin/user/${id}`, userData, config)
             setIsUpdated(data.success)
             setLoading(false)
 
@@ -68,11 +68,7 @@ const UpdateUser = () => {
     }, [error, isUpdated, id, user])
     const submitHandler = (e) => {
         e.preventDefault();
-        const formData = new FormData();
-        formData.set('name', name);
-        formData.set('email', email);
-        formData.set('role', role);
-        updateUser(user._id, formData)
+        updateUser(user._id, { name, email, role })
     }
 
     return (

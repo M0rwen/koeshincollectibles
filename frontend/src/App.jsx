@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { ToastContainer, } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useDispatch } from 'react-redux'
 import { loadUser } from './actions/userActions'
+import { LOGOUT_SUCCESS } from './constants/userConstants'
 
 
 
@@ -45,6 +46,22 @@ const ScrollToTop = () => {
     document.documentElement.scrollTop = 0
     document.body.scrollTop = 0
   }, [pathname])
+
+  return null
+}
+
+const AuthSessionRedirect = () => {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      dispatch({ type: LOGOUT_SUCCESS })
+      navigate('/login', { replace: true })
+    }
+    window.addEventListener('koeshin:auth-expired', handleSessionExpired)
+    return () => window.removeEventListener('koeshin:auth-expired', handleSessionExpired)
+  }, [dispatch, navigate])
 
   return null
 }
@@ -158,6 +175,7 @@ function App() {
 
 
       <Router>
+        <AuthSessionRedirect />
         <ScrollToTop />
         {/* <Header cartItems={state.cartItems} /> */}
         <Header

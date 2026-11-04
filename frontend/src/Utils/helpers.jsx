@@ -1,3 +1,4 @@
+import { getAuthToken } from './authToken'
 import { toast } from 'react-toastify';
 import orderPricing from '../../../shared/order-pricing.json'
 
@@ -56,13 +57,7 @@ export const logout = next => {
 };
 
 export const getToken = () => {
-    if (window !== 'undefined') {
-        if (sessionStorage.getItem('token')) {
-            return JSON.parse(sessionStorage.getItem('token'));
-        } else {
-            return false;
-        }
-    }
+    return getAuthToken() || false
 };
 
 export const errMsg = (message = '') => toast.error(message, {

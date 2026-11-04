@@ -84,15 +84,7 @@ exports.registerUser = async (req, res, next) => {
             url: result.secure_url
         },
     })
-    //test token
-    const token = user.getJwtToken();
-
-    return res.status(201).json({
-        success: true,
-        user,
-        token
-    })
-    // sendToken(user, 200, res)
+    return sendToken(user, 201, res)
 }
 
 exports.loginUser = async (req, res, next) => {
@@ -190,12 +182,7 @@ exports.resetPassword = async (req, res, next) => {
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
     await user.save();
-    const token = user.getJwtToken();
-    return res.status(201).json({
-        success: true,
-        token,
-        user
-    });
+    return sendToken(user, 201, res)
 
 }
 
@@ -268,13 +255,7 @@ exports.updatePassword = async (req, res, next) => {
     }
     user.password = req.body.password;
     await user.save();
-    const token = user.getJwtToken();
-
-    return res.status(201).json({
-        success: true,
-        user,
-        token
-    });
+    return sendToken(user, 201, res)
 
 }
 

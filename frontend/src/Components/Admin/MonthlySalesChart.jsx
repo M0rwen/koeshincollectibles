@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatCurrency, getToken } from "../../Utils/helpers";
-import axios from "axios";
+import api from "../../Utils/api";
 
 export default function MonthlySalesChart() {
     const [sales, setSales] = useState([])
@@ -20,7 +20,7 @@ export default function MonthlySalesChart() {
         if (endDate) params.append('endDate', `${endDate}-01`)
         const query = params.toString() ? `?${params.toString()}` : ''
 
-        axios.get(`${import.meta.env.VITE_API}/admin/sales-per-month${query}`, config)
+        api.get(`${import.meta.env.VITE_API}/admin/sales-per-month${query}`, config)
             .then(({ data }) => {
                 if (active) setSales(data.salesPerMonth)
             })

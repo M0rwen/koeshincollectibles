@@ -13,7 +13,8 @@ const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:5173')
 
 app.use(cors({
     origin: allowedOrigins,
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));

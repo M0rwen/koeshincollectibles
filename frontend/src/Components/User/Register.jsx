@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useFormik } from 'formik'
 import MetaData from '../Layout/MetaData'
-import axios from 'axios'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
-import { loginWithGoogle } from '../../actions/userActions'
+import { loginWithGoogle, register } from '../../actions/userActions'
 import { registerSchema } from '../../validation/schemas'
 import AuthLayout from './AuthLayout'
 
@@ -42,7 +41,8 @@ const Register = () => {
             formData.set('contactNumber', values.contactNumber)
             formData.set('password', values.password)
             formData.set('avatar', avatar)
-            await register(formData)
+            const result = await dispatch(register(formData))
+            if (!result.success) setError(result.error)
         }
     })
 
@@ -61,16 +61,6 @@ const Register = () => {
                 }
             }
             reader.readAsDataURL(e.target.files[0])
-        }
-    }
-
-    const register = async (userData) => {
-        try {
-            const config = { headers: { 'Content-Type': 'multipart/form-data' } }
-            await axios.post(`${import.meta.env.VITE_API}/register`, userData, config)
-            navigate('/')
-        } catch (error) {
-            setError(error.response?.data?.message || 'Registration failed')
         }
     }
 
